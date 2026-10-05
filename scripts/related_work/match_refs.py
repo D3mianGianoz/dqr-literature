@@ -21,6 +21,8 @@ from pathlib import Path
 ENTRY = re.compile(r"\n\[(\d+)\]\s*")
 YEAR = re.compile(r"\b((?:19|20)\d{2})\b")
 PAGE_FOOTER = re.compile(r"USES2.*?\d+\s*")
+# ". " that is *not* preceded by a capital, so "Richard Y. Wang" survives.
+SENTENCE = re.compile(r"(?<![A-Z])\.\s+")
 
 
 def entries(text: str) -> dict[str, tuple[str, list[str], str]]:
@@ -32,7 +34,7 @@ def entries(text: str) -> dict[str, tuple[str, list[str], str]]:
         years = YEAR.findall(body)
         # Split on ". " only when not preceded by a capital, so "Richard Y. Wang"
         # keeps its surname instead of being cut at the initial.
-        head = re.split(r"(?<![A-Z])\.\s+", body)[0]
+        head = SENTENCE.split(body)[0]
         sur = []
         for chunk in re.split(r",| and ", head):
             toks = [t for t in chunk.replace(".", " ").split() if len(t) > 1]
@@ -43,41 +45,54 @@ def entries(text: str) -> dict[str, tuple[str, list[str], str]]:
 
 
 def title_tokens(citation: str) -> set[str]:
-    """Distinctive words from the title segment of a bibliographic entry."""
+    """Distinctive words from the title segment of a bibliographic entry.
+
+    The title is the first segment after the author list. Scanning forward
+    instead runs into author surnames and the publisher line, which drags the
+    overlap score down and makes real matches look wrong.
+    """
     stop = set(
         "the and for with from that this into using based between over under "
         "their have been will more than data method approach".split()
     )
-    words: set[str] = set()
-    for seg in re.split(r"\.\s+", citation)[1:]:
-        if YEAR.search(seg) or "," in seg[:12]:  # reached the journal/venue
-            break
-        words |= {w for w in re.findall(r"[a-z]{4,}", seg.lower()) if w not in stop}
-    return words or {w for w in re.findall(r"[a-z]{5,}", citation.lower()) if w not in stop}
+    segments = SENTENCE.split(citation)
+    title = segments[1] if len(segments) > 1 else citation
+    return {w for w in re.findall(r"[a-z]{4,}", title.lower()) if w not in stop}
 
 
 def match(row: tuple[str, list[str], str], rows: list[dict[str, str]]) -> tuple[dict[str, str] | None, str]:
-    """Return (row, method). Exact surname+year first, then a guarded fuzzy pass."""
-    year, sur, citation = row
-    for r in rows:
-        if r["year"] == year and any(s in (r["author"] + r["title"]).lower() for s in sur):
-            return r, "exact"
+    """Return (row, method).
 
-    # Fuzzy: same surname family but the year differs, or a short/obscure
-    # citation whose title is distinctive enough. Requiring the surname stops
-    # "Deep Learning" from matching any paper that merely uses deep learning.
+    The primary author must match, the year must match, and either the titles
+    must overlap or the file must carry more than one author surname. Matching on
+    any surname alone is unsafe: "Wang & Strong" (1996) otherwise matches "Wand &
+    Wang" (1996) on surname and year, which coincide by accident.
+    """
+    year, sur, citation = row
     words = title_tokens(citation)
-    best, best_score = None, 0.0
+    best, best_score, best_method = None, 0.0, "none"
     for r in rows:
         blob = (r["author"] + " " + r["title"]).lower()
+        if not sur or sur[0] not in blob or r["year"] != year:
+            continue
         overlap = sum(1 for w in words if w in blob) / max(len(words), 1)
-        same_author = any(s[:5] in (r["author"] + r["title"]).lower() for s in sur)
-        year_ok = abs(int(r["year"] or 0) - int(year or 0)) <= 1 if year else False
-        if overlap >= 0.85 and (same_author or year_ok) and overlap > best_score:
-            best, best_score = r, overlap
-    if best is None:
-        return None, "none"
-    return best, f"fuzzy:{best_score:.2f}"
+        # filenames often truncate author lists to "X et al", so a second
+        # surname only counts as corroboration, never as a requirement
+        corroboration = sum(1 for s in sur if s in blob) >= 2
+        if overlap >= 0.5:
+            score = 1.0
+        elif corroboration:
+            score = 0.8
+        elif len(words) <= 2 or overlap < 0.25:
+            # short or uninformative filename ("NFAD.pdf"): surname and year
+            # agree but the title cannot corroborate. Real, but needs a human.
+            score = 0.3
+        else:
+            continue
+        if score > best_score:
+            best, best_score = r, score
+            best_method = {1.0: "exact", 0.8: "exact:cited", 0.3: "weak"}[score]
+    return best, best_method
 
 
 def main() -> None:
@@ -108,12 +123,12 @@ def main() -> None:
         w = csv.DictWriter(fh, fieldnames=list(out[0]))
         w.writeheader()
         w.writerows(out)
-    exact = sum(r["method"] == "exact" for r in out)
-    fuzzy = sum(r["method"].startswith("fuzzy") for r in out)
+    exact = sum(r["method"].startswith("exact") for r in out)
+    weak = sum(r["method"] == "weak" for r in out)
     absent = sum(r["local"] == "no" for r in out)
     print(
-        f"{exact + fuzzy}/{len(out)} available ({exact} exact, {fuzzy} fuzzy,"
-        f" {absent} absent) -> {args.out}"
+        f"{exact + weak}/{len(out)} found ({exact} strong, {weak} weak needing"
+        f" confirmation, {absent} absent) -> {args.out}"
     )
 
 
