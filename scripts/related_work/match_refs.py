@@ -30,7 +30,9 @@ def entries(text: str) -> dict[str, tuple[str, list[str], str]]:
     for i in range(1, len(parts), 2):
         body = re.sub(r"\s+", " ", PAGE_FOOTER.sub(" ", parts[i + 1])).strip()
         years = YEAR.findall(body)
-        head = body.split(". ")[0]
+        # Split on ". " only when not preceded by a capital, so "Richard Y. Wang"
+        # keeps its surname instead of being cut at the initial.
+        head = re.split(r"(?<![A-Z])\.\s+", body)[0]
         sur = []
         for chunk in re.split(r",| and ", head):
             toks = [t for t in chunk.replace(".", " ").split() if len(t) > 1]
@@ -38,6 +40,44 @@ def entries(text: str) -> dict[str, tuple[str, list[str], str]]:
                 sur.append(toks[-1].lower())
         found[parts[i]] = (years[-1] if years else "", sur, body)
     return found
+
+
+def title_tokens(citation: str) -> set[str]:
+    """Distinctive words from the title segment of a bibliographic entry."""
+    stop = set(
+        "the and for with from that this into using based between over under "
+        "their have been will more than data method approach".split()
+    )
+    words: set[str] = set()
+    for seg in re.split(r"\.\s+", citation)[1:]:
+        if YEAR.search(seg) or "," in seg[:12]:  # reached the journal/venue
+            break
+        words |= {w for w in re.findall(r"[a-z]{4,}", seg.lower()) if w not in stop}
+    return words or {w for w in re.findall(r"[a-z]{5,}", citation.lower()) if w not in stop}
+
+
+def match(row: tuple[str, list[str], str], rows: list[dict[str, str]]) -> tuple[dict[str, str] | None, str]:
+    """Return (row, method). Exact surname+year first, then a guarded fuzzy pass."""
+    year, sur, citation = row
+    for r in rows:
+        if r["year"] == year and any(s in (r["author"] + r["title"]).lower() for s in sur):
+            return r, "exact"
+
+    # Fuzzy: same surname family but the year differs, or a short/obscure
+    # citation whose title is distinctive enough. Requiring the surname stops
+    # "Deep Learning" from matching any paper that merely uses deep learning.
+    words = title_tokens(citation)
+    best, best_score = None, 0.0
+    for r in rows:
+        blob = (r["author"] + " " + r["title"]).lower()
+        overlap = sum(1 for w in words if w in blob) / max(len(words), 1)
+        same_author = any(s[:5] in (r["author"] + r["title"]).lower() for s in sur)
+        year_ok = abs(int(r["year"] or 0) - int(year or 0)) <= 1 if year else False
+        if overlap >= 0.85 and (same_author or year_ok) and overlap > best_score:
+            best, best_score = r, overlap
+    if best is None:
+        return None, "none"
+    return best, f"fuzzy:{best_score:.2f}"
 
 
 def main() -> None:
@@ -49,24 +89,17 @@ def main() -> None:
 
     rows = list(csv.DictReader(args.inventory.open(encoding="utf-8")))
     out = []
-    for ref, (year, sur, cite) in entries(args.refs.read_text(encoding="utf-8")).items():
-        hit = next(
-            (
-                r
-                for r in rows
-                if r["year"] == year
-                and any(s in (r["author"] + r["title"]).lower() for s in sur)
-            ),
-            None,
-        )
+    for ref, parsed in entries(args.refs.read_text(encoding="utf-8")).items():
+        hit, method = match(parsed, rows)
         out.append(
             {
                 "ref": ref,
-                "year": year,
-                "surnames": "|".join(sur[:3]),
+                "year": parsed[0],
+                "surnames": "|".join(parsed[1][:3]),
                 "local": "yes" if hit else "no",
+                "method": method,
                 "local_path": hit["path"] if hit else "",
-                "citation": cite[:300],
+                "citation": parsed[2][:300],
             }
         )
 
@@ -75,7 +108,13 @@ def main() -> None:
         w = csv.DictWriter(fh, fieldnames=list(out[0]))
         w.writeheader()
         w.writerows(out)
-    print(f"{sum(r['local'] == 'yes' for r in out)}/{len(out)} citations available locally -> {args.out}")
+    exact = sum(r["method"] == "exact" for r in out)
+    fuzzy = sum(r["method"].startswith("fuzzy") for r in out)
+    absent = sum(r["local"] == "no" for r in out)
+    print(
+        f"{exact + fuzzy}/{len(out)} available ({exact} exact, {fuzzy} fuzzy,"
+        f" {absent} absent) -> {args.out}"
+    )
 
 
 if __name__ == "__main__":

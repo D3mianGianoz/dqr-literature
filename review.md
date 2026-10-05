@@ -50,12 +50,31 @@ untagged by filename alone). Re-run it as the collection grows.
 Scannapieca, Wang & Strong, Karkouch, Teh, Klein & Lehner, Naumann & Rolker,
 Aggarwal, Chandola.
 
-**31 of the 49 have a local PDF** (`docs/literature/soa_citations.csv`), so the SoA's
-foundational citations can be read directly rather than trusted second-hand.
-The 18 that cannot are the older data-quality canon and some IoT surveys.
+**45 of the 49 have a local PDF** (`docs/literature/soa_citations.csv`), so the
+SoTA's foundational citations can be read directly rather than trusted
+second-hand.
 
-The two corpora are not disjoint, they are differently weighted: the SoA is
-built on **data-quality foundations** (Batini & Scannapieca, Wang & Strong,
+An earlier count said 31. The shortfall was a parsing bug, not missing files:
+author segments were split at initials, so "Richard Y. Wang" yielded the
+surname `richard` and never matched. Fixed in `match_refs.py`, which also gained
+a guarded fuzzy title-overlap fallback. In the event exact matching suffices.
+
+Only four are genuinely absent, and three are textbooks rather than papers:
+
+| ref | work |
+|---|---|
+| [11] | Barnett & Lewis (1994), *Outliers in Statistical Data* - book |
+| [27] | Goodfellow, Bengio & Courville (2016), *Deep Learning* - book |
+| [30] | Hyndman & Athanasopoulos (2018), *Forecasting: Principles and Practice* - book |
+| [32] | Malhotra et al. (2015), LSTM networks for anomaly detection in time series |
+
+Textbooks would be cited from general knowledge rather than quoted. Note the
+collection *does* contain Aggarwal's *Outlier Analysis* and Sutton & Barto's
+*Reinforcement Learning*, so textbook presence is inconsistent rather than
+excluded by policy.
+
+The index also contains **five duplicate pairs**, so 344 is not 344 distinct
+works.
 Aggarwal, Chandola) while the collection is weighted toward **recent anomaly
 detection and benchmarking**.
 
