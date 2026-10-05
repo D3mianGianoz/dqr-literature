@@ -31,14 +31,18 @@ THEMES: dict[str, str] = {
 }
 
 
-def parse(paper: Path, root: Path) -> tuple[str, str]:
-    """Return (year, title) parsed from the filename, falling back to the folder."""
+def parse(paper: Path) -> tuple[str, str, str]:
+    """Return (year, author, title) parsed from the filename.
+
+    The author segment must be kept: dropping it makes titles ambiguous and
+    breaks matching against bibliographies.
+    """
     stem = paper.stem.replace("_", " ").replace("-", " ")
     match = YEAR.search(stem)
     if match:
-        return match.group(0), stem[match.end() :].strip()
+        return match.group(0), stem[: match.start()].strip(), stem[match.end() :].strip()
     folder = paper.parent.name
-    return (folder if YEAR_DIR.fullmatch(folder) else ""), stem
+    return (folder if YEAR_DIR.fullmatch(folder) else ""), "", stem
 
 
 def main() -> None:
@@ -49,11 +53,12 @@ def main() -> None:
 
     rows = []
     for paper in sorted(args.root.rglob("*.pdf")):
-        year, title = parse(paper, args.root)
+        year, author, title = parse(paper)
         tags = sorted(t for t, pat in THEMES.items() if re.search(pat, title, re.I))
         rows.append(
             {
                 "year": year,
+                "author": author,
                 "title": title,
                 "themes": "|".join(tags),
                 "path": str(paper),
@@ -62,7 +67,9 @@ def main() -> None:
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=["year", "title", "themes", "path"])
+        writer = csv.DictWriter(
+            fh, fieldnames=["year", "author", "title", "themes", "path"]
+        )
         writer.writeheader()
         writer.writerows(rows)
 
