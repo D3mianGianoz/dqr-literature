@@ -222,6 +222,34 @@ Useful as an external check on `docs/research/vocabulary.md`, and as support for
 treating the operational/fault boundary as a known difficulty rather than a
 local invention.
 
+### Ni, et al. (2009) — Sensor network data fault types (ACM TOSN 5(3))
+
+The canonical sensor-data fault taxonomy. Defines a data fault as **"data
+reported by a sensor that is inconsistent with the phenomenon of interest's true
+behavior"** — domain-relative, not an absolute deviation.
+
+Calibration faults (§5.2.1) come in three named forms:
+
+| fault | definition as given |
+|---|---|
+| offset | values offset by a constant; normal patterns still visible over an extended period |
+| gain | rate of change of measured data does not match expectations; the sensor reports a change of `G · δ` for a true change `δ` |
+| drift | offset or gain parameters change over the deployment's life |
+
+Calibration faults are noted as producing "lower **accuracy** of sensor
+measurements but not necessarily lower **precision**" — a useful distinction when
+reporting what a detector can and cannot see. The paper also states that
+detecting and modelling general calibration errors is "difficult without human
+input," which corroborates the decision to withdraw fault-diagnosis categories.
+
+**One point cuts against the no-injection position.** Ni et al. state that when
+testing a fault-detection system, "because the faults presented here are the most
+common, they should be the first to be used in testing **by injecting them into
+either simulated or real datasets**." That is the canonical taxonomy paper
+arguing injection is testing *infrastructure*, not a contribution — a different
+claim from the one being set aside. Worth deciding deliberately rather than by
+default.
+
 ## What this means for the study
 
 The literature converges on four requirements that map directly onto the current
@@ -444,9 +472,9 @@ SKAB and NAB are the most directly comparable to our pipeline; the others are go
 ## Not yet ingested
 
 - 327 of 344 papers are title-triaged only.
-- 26 of the 31 locally available SoTA references are read; the algorithm
-  primaries (Isolation Forest, EIF, HBOS, LOF, SVDD, SAX, LSTM) and Ni et al.
-  2009 are catalogued but not read.
+- 25 of the 31 locally available SoTA references are read. The algorithm
+  primaries (Isolation Forest, EIF, HBOS, LOF, SVDD, SAX, LSTM) are catalogued
+  but not read.
 - The 2025-2026 metrics cluster (VUS, segmentation measures) is only partly read.
 - The seven section-2.4 citations behind the gap argument are not locally
   available and have not been read in full.
