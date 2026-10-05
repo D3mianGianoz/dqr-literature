@@ -73,8 +73,31 @@ collection *does* contain Aggarwal's *Outlier Analysis* and Sutton & Barto's
 *Reinforcement Learning*, so textbook presence is inconsistent rather than
 excluded by policy.
 
-The index also contains **five duplicate pairs**, so 344 is not 344 distinct
+The index also contains **five duplicate pairs**, so the count is not distinct
 works.
+
+### The corpus is wider than Zpapers
+
+The first index walked `Zpapers/` only. The `Literature/` root holds **41 more
+PDFs** in `Books/`, `Slides/`, `Stage/`, `Thesis/`, `Posters/`, `Tutorials/` and
+`Images/` — 385 in total. Several matter directly:
+
+- **Keogh, *Problems with TSAD*** (`Slides/`) — the critique behind Wu & Keogh's
+  "illusion of progress" claim, in the author's own words.
+- **Boniol lecture decks**, including one specifically on **evaluation
+  measures** — the author of both the VUS and the segmentation-measure papers,
+  which makes them a compact route into that cluster.
+- **`Expect the Unexpected`** (`Stage/waiting/`) — this is the Teh et al. 2021
+  paper the open research question cites.
+- **`Data Quality Dimensions`** (`Images/`) and the two `Stage/reports/` data
+  quality papers — likely the group's own output; worth checking authorship
+  before citing as external work.
+- Three **theses** (`Thesis/`) — Bosman on networked-embedded anomaly detection,
+  Delaine, and Selcuck.
+
+None of these are in the SoTA bibliography, so reading them does not close a
+bibliography gap. They are likely working notes for this project, and should be
+read before the collection is treated as settled.
 Aggarwal, Chandola) while the collection is weighted toward **recent anomaly
 detection and benchmarking**.
 
