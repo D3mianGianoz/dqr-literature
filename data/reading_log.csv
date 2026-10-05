@@ -1,4 +1,15 @@
 key,source,year,soa_ref,citation
+Nguyen_et_al_2019_To_Verify_the_Correctness_of_IoT_Sensor_Data_in_Real-Time,inv,2019,,
+bouman_2025_rethinking_anomaly_detection_from_theory_to_practice,inv,2025,,
+bouman_and_heskes_2025_autoencoders_for_anomaly_detection_are_unreliable,inv,2025,,
+bouman_et_al._2024_unsupervised_anomaly_detection_algorithms_on_real-world_data_how_many,inv,2024,,
+chavelli_et_al._2025_toward_interpretable_evaluation_measures_for_time_series_segmentation,inv,2025,,
+donne_and_davis_2026_robust_anomaly_detection_under_contaminated_data_a_comprehensive_eval,inv,2026,,
+middlehurst_et_al._2024_bake_off_redux_a_review_and_experimental_evaluation_of_recent_time_se,inv,2024,,
+röchner_et_al._2025_we_need_to_rethink_benchmarking_in_anomaly_detection,inv,2025,,
+sylligardos_et_al._2023_choose_wisely_an_extensive_evaluation_of_model_selection_for_anomaly,inv,2023,,
+sørbø_and_ruocco_2024_navigating_the_metric_maze_a_taxonomy_of_evaluation_metrics_for_anoma,inv,2024,,
+zhang_et_al._2022_anomaly_detection_of_sensor_faults_and_extreme_events_based_on_support,inv,2022,,
 Aggarwal_2017_Outlier_Analysis,soa,2017,10,"Charu C. Aggarwal. Outlier Analysis. Springer International Publishing, Cham, 2017."
 Ahmad_et_al_2017_Unsupervised_real-time_anomaly_detection_for_streaming_data,soa,2017,43,"Subutai Ahmad, Alexander Lavin, Scott Purdy, and Zuha Agha. Unsupervised real-time anomaly detection for streaming data. Neurocomputing, 262:134–147, November 2017."
 Angiulli_Pizzuti_2002_Fast_Outlier_Detection_in_High_Dimensional_Spaces,soa,2002,37,"Fabrizio Angiulli and Clara Pizzuti. Fast Outlier Detection in High Dimensional Spaces. Lecture Notes in Computer Science, 2002."
