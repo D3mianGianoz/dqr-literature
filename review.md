@@ -1,6 +1,7 @@
 # Related work: do anomaly detection methods suit automated sensor-data cleaning?
 
-Status: **third tranche.** 344 papers inventoried, 12 read in depth.
+Status: **SoTA complete.** 344 papers inventoried, 31 read in depth —
+all locally available SoTA references.
 Everything below distinguishes what was read from what was only title-triaged.
 Counts come from `reading_log.csv`, not from prose.
 
@@ -317,6 +318,81 @@ by noisy, unreliable sensed data and civil-engineering structural monitoring.
 Cited in the thesis for evaluation on real-world data. Also confirms that SHM is
 already a named application domain for this method family.
 
+## Completing the SoTA: the remaining 19 references
+
+All 31 locally available SoTA references are now read. Grouped by role rather
+than one subsection each.
+
+**Foundations and the DQ framing.** Naumann & Rolker (2000) classify
+information-quality criteria in an explicitly *assessment-oriented* way,
+identifying three sources of IQ scores, and observe that projects "hardly ever"
+address the difficulty of actually **assessing scores for the criteria**. That is
+precisely why a written codebook felt necessary and then kept moving: scoring
+qualitative criteria is the hard part, and the field has known it for 25 years.
+Yan et al. (2014) covers trust management in IoT — adjacent framing, not
+detection.
+
+**Anomaly-detection surveys.** Chandola et al. (2009) is the canonical reference
+and states the central difficulty plainly: defining a normal region containing
+every possible normal behaviour is very difficult, and **"the boundary between
+normal and anomalous behavior is often not precise."** Hodge & Austin (2004)
+separately list *changes in system behaviour* alongside *mechanical faults* and
+*instrument error* as causes of outliers — the operational/fault distinction,
+already present in 2004 — and describe outlier detection as a way to "purify the
+data for processing." Pang et al. (2022) and Schmidl et al. (2022) are the modern
+surveys; **Schmidl et al. is the time-series analogue of Bouman et al. (2024)**
+and is the more directly applicable of the two. Ayadi et al. (2017) and Ahmad et
+al. (2017) cover WSN outlier detection and streaming HTM respectively.
+
+**Fault classification independent of cause.** Baljak et al. (2012) classify
+faults on two axes — **continuity and frequency of occurrence**, and **existence
+of observable and learnable patterns** — and do it "independently of the
+underlying cause."
+
+This is the most useful methodological result in the set. It is a published
+answer to the problem that killed the codebook: when cause cannot be determined,
+classify by **observable properties** instead. That is exactly what
+`docs/research/vocabulary.md` does, and it now has a citation for the approach
+rather than only a rationale.
+
+Javed & Wolf (2012) address automated sensor verification via outlier detection
+in cyber-physical systems.
+
+**The algorithm primaries, and what they say about false alarms.** Together these
+argue against the current design in three specific ways:
+
+- **Isolation Forest** (Liu et al. 2008) introduces itself by criticising the
+  dominant approach for being "optimized to profile normal instances, but not
+  optimized to detect anomalies," which causes "**too many false alarms** or too
+  few anomalies being detected." That is RQ1's problem, named in 2008.
+- **NFAD** (Ryzhikov et al. 2021) criticises one-class methods — one-class SVM,
+  robust autoencoder — for assuming **separability** of normal and anomalous
+  classes, which does not hold when legitimate operation overlaps with faults.
+- **Extended Isolation Forest** (Hariri et al. 2021) fixes score-assignment
+  artifacts in iForest. Since Bouman et al. (2024) found **EIF best overall**
+  across 33 algorithms, it is the obvious simple baseline this project does not
+  currently have.
+
+**LOF** (Angiulli & Pizzuti 2002) is the reference local-outlier method, and
+Bouman et al. found kNN strongest on *local* anomalies — so LOF is the natural
+cheap comparison for the KNN criterion. **HBOS** (Goldstein & Dengel 2012) is
+constant-time. **Ensemble Grammar Induction** (Gao et al. 2020) concedes that
+its discretization parameters (PAA size, alphabet size) are "**still an open
+problem**," especially unsupervised — the same condition as our thresholds.
+**Keogh et al. (2002)** note previous surprise-detection uses "a very limited
+notion of surprise." **LSTM** (Hochreiter & Schmidhuber 1997) is included as a
+temporal-model baseline. Rasheed et al. (2009) applies FFT to spatial outlier
+mining — a spatial technique, relevant only once multiple gauges are used.
+
+### Currency caveat
+
+The SoTA is dated 2024 and its bibliography bottoms out around 2014 for
+detection methods. The algorithm primaries above are stable and still benchmark
+methods, but the **deep and foundation-model literature post-2018 is largely
+absent from it** — including the recent benchmarking work already read here
+(Bouman 2024, Röchner 2025, Donné & Davis 2026). Treat the SoTA as the
+problem-framing reference, not as a current methods survey.
+
 ## What this means for the study
 
 The literature converges on four requirements that map directly onto the current
@@ -334,6 +410,8 @@ blind pipeline:
 | ROC misleads under heavy skew | Davis & Goadrich 2006 | candidate sample is 69/74 anomalous |
 | sensor specification parameters are needed | Karkouch et al. 2016 | excluded by the withdrawn codebook |
 | detection and correction are one axis | Nguyen et al. 2023 | detection only; no correction |
+| normality-profiling causes false alarms | Isolation Forest 2008 | unmeasured; this is RQ1 |
+| one-class methods assume separability | NFAD 2021 | legitimate operation overlaps faults by construction |
 
 And one open transfer question:
 
