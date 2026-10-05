@@ -1,7 +1,7 @@
 # Related work: do anomaly detection methods suit automated sensor-data cleaning?
 
-Status: **SoTA complete.** 344 papers inventoried, 31 read in depth —
-all locally available SoTA references.
+Status: **SoTA complete.** 385 papers inventoried, 45 read in depth —
+every available SoTA reference, none left unread.
 Everything below distinguishes what was read from what was only title-triaged.
 Counts come from `reading_log.csv`, not from prose.
 
@@ -54,10 +54,18 @@ Aggarwal, Chandola.
 SoTA's foundational citations can be read directly rather than trusted
 second-hand.
 
-An earlier count said 31. The shortfall was a parsing bug, not missing files:
-author segments were split at initials, so "Richard Y. Wang" yielded the
-surname `richard` and never matched. Fixed in `match_refs.py`, which also gained
-a guarded fuzzy title-overlap fallback. In the event exact matching suffices.
+Earlier counts said 31, then 45. The first shortfall was a parsing bug, not
+missing files: author segments were split at initials, so "Richard Y. Wang"
+yielded the surname `richard`. A second bug matched on *any* surname, which
+linked "Wang & Strong" (1996) to "Wand & Wang" (1996) — same surname, same
+year, different paper. `match_refs.py` now requires the primary author, the
+year, and either title overlap or a second corroborating surname. Matches that
+rest on surname and year alone are labelled `weak` and flagged for a human;
+two entries are currently weak and were confirmed by eye.
+
+So the four genuinely absent are the textbooks and Malhotra (2015). Breunig's
+LOF *is* present — an earlier grep missed it because the file is titled simply
+`LOF`.
 
 Only four are genuinely absent, and three are textbooks rather than papers:
 
@@ -435,6 +443,59 @@ absent from it** — including the recent benchmarking work already read here
 (Bouman 2024, Röchner 2025, Donné & Davis 2026). Treat the SoTA as the
 problem-framing reference, not as a current methods survey.
 
+## Closing the SoTA: the last 14 references
+
+**45 of 45 available SoTA references are now read.** Four remain absent
+(three textbooks and one arXiv preprint). Grouped by role.
+
+**The data-quality foundations.** Wang & Strong (1996) argue that data consumers
+hold a broader conceptualisation of quality than IS practitioners realise, and
+that improvement efforts "tend to focus narrowly on accuracy." Strong, Lee &
+Wang (1997) place organisational databases in a larger context of information
+use. Together these establish that quality is multidimensional and
+context-dependent — the premise everything downstream assumes. Klein & Lehner
+(2009) apply that framing to sensor data streams specifically, and Aggarwal's
+*Outlier Analysis* (2017) opens with the same insistence for outlier detection:
+**"The Data Model is Everything."**
+
+**Automatic validation — the closest precedent to the intended contribution.**
+Two papers predate the SoTA by a decade and describe almost exactly the target
+system:
+
+- **Mourad & Bertrand-Krajewski (2002)** build an automatic pre-validation
+  procedure for long time series using **seven tests** keyed to *the functioning
+  state of the sensor*, *the physical range of the quantity*, *the locally
+  realistic range*, and the duration since the last reading. That is a concrete
+  ruleset combining sensor state with **physical range** — precisely the
+  domain-parameter approach Karkouch describes and the withdrawn codebook
+  excluded. Worth reading in full before any validation design is fixed.
+- **Jeffery et al. (2006)** present ESP, a declarative pipeline framework for
+  building sensor data cleaning infrastructure, on the premise that sensor data
+  "tend to be unreliable" and must be cleaned before use.
+
+**Applied sensor contexts.** Kaiser et al. (2005) on networked infomechanical
+systems for ambient intelligence. Holbert & Lin (2012) apply fuzzy logic to
+nuclear instrumentation fault detection — a safety-critical domain where the
+cost of a missed fault differs by orders of magnitude from sensor cleaning.
+Erhan et al. (2021) review anomaly detection specifically in sensor systems.
+
+**Outlier detection between statistics and data mining.** Zimek & Filzmoser
+(2018) is the field's own account of the divide between classical statistical
+reasoning and modern data-mining algorithms — useful background for why
+"which algorithm?" has no single answer.
+
+**Metric foundations.** Bradley (1997) establishes AUC as a performance measure
+across six classifiers on six medical datasets, finding it superior to overall
+accuracy. Davis & Goadrich (2006) then qualifies it for skewed data. Together
+they are the citation chain behind RQ1's metric position.
+
+**The algorithm primaries, properly read.** Breunig et al. (2000) argue that
+treating outlier-ness as a **binary** property is wrong for many scenarios and
+propose a *degree* of outlier-ness — the reference point for the LOF baseline
+that RQ2 would need. Kingma & Welling (2014) introduced VAE, cited here
+presumably as a deep generative baseline. Sutton & Barto is a textbook and is
+not quotable here.
+
 ## What this means for the study
 
 The literature converges on four requirements that map directly onto the current
@@ -454,6 +515,8 @@ blind pipeline:
 | detection and correction are one axis | Nguyen et al. 2023 | detection only; no correction |
 | normality-profiling causes false alarms | Isolation Forest 2008 | unmeasured; this is RQ1 |
 | one-class methods assume separability | NFAD 2021 | legitimate operation overlaps faults by construction |
+| sensor state + physical range are usable validation tests | Mourad & Bertrand-Krajewski 2002 | never implemented here |
+| outlier-ness is a degree, not a binary | Breunig et al. 2000 | episodes are binarised at a threshold |
 
 And one open transfer question:
 
