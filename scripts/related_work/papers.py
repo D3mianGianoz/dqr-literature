@@ -27,33 +27,30 @@ def _load(path: Path) -> list[dict[str, str]]:
     return list(csv.DictReader(path.open(encoding="utf-8"))) if path.exists() else []
 
 
-def find(query: str | None, ref: str | None) -> tuple[dict[str, str], str | None]:
+def find(query: str | None, ref: str | None) -> tuple[dict[str, str], str]:
     """Return (row, source) for a query over the SoTA citations then the inventory."""
-    if ref:
-        for r in _load(SOA):
-            if r["ref"] == ref and r["local"] == "yes":
-                return {
-                    "path": r["local_path"],
-                    "citation": r["citation"],
-                    "year": r["year"],
-                }, "soa"
-    for r in _load(SOA):  # a SoTA citation is more specific than a collection entry
-        if r["local"] == "yes" and query and query.lower() in r["surnames"].lower():
-            return {
+    soa = [
+        r
+        for r in _load(SOA)
+        if r["local"] == "yes"
+        and (r["ref"] == ref if ref else query.lower() in r["surnames"].lower())
+    ]
+    if soa:
+        r = soa[0]
+        return (
+            {
                 "path": r["local_path"],
                 "citation": r["citation"],
                 "year": r["year"],
-            }, "soa"
+            },
+            "soa",
+        )
     for r in _load(INVENTORY):
         if query and (
             query.lower() in r["author"].lower() or query.lower() in r["title"].lower()
         ):
             return r, "inv"
     raise SystemExit(f"no match for {query or ref!r}")
-
-
-def _log() -> list[dict[str, str]]:
-    return _load(LOG)
 
 
 def show(query: str | None, ref: str | None, chars: int) -> None:
@@ -75,7 +72,7 @@ def show(query: str | None, ref: str | None, chars: int) -> None:
 
 def mark(query: str | None, ref: str | None) -> None:
     row, source = find(query, ref)
-    entries = _log()
+    entries = _load(LOG)
     key = Path(row["path"]).stem
     if any(e["key"] == key for e in entries):
         print(f"already logged: {key}")
@@ -99,7 +96,7 @@ def mark(query: str | None, ref: str | None) -> None:
 
 
 def todo() -> None:
-    entries = _log()
+    entries = _load(LOG)
     read = {e["key"] for e in entries}
     soa = [r for r in _load(SOA) if r["local"] == "yes"]
     inv = _load(INVENTORY)

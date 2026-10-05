@@ -13,22 +13,6 @@ import re
 from pathlib import Path
 
 YEAR = re.compile(r"\b(19|20)\d{2}\b")
-YEAR_DIR = re.compile(r"(19|20)\d{2}")
-
-# Themes that matter for the blind-detection study: whether existing anomaly
-# detection methods are fit for automated sensor-data cleaning.
-THEMES: dict[str, str] = {
-    "metrics": r"metric|evaluat|accuracy measure|scoring|\bvus\b|segmentation",
-    "benchmark": r"benchmark|rethink|comparab|real.world|real world",
-    "fault_diagnosis": r"fault detect|fault diagnos|fault classif|sensor fault|fault local",
-    "data_quality": r"data quality|data clean|outlier|imput|corrupt|noise removal",
-    "time_series_ad": r"time.series|anomaly detect|outlier detect|univariate|multivariate",
-    "drift": r"drift|contaminat|concept change",
-    "model_selection": r"model selection|hyperparam|ensemble|base learner",
-    "explainability": r"explainab|interpret|explanation",
-    "shm": r"structural health|\bshm\b|infrastructure|bridge|civil",
-    "injection": r"injection|synthetic|simulat.*fault",
-}
 
 
 def parse(paper: Path) -> tuple[str, str, str]:
@@ -46,7 +30,7 @@ def parse(paper: Path) -> tuple[str, str, str]:
             stem[match.end() :].strip(),
         )
     folder = paper.parent.name
-    return (folder if YEAR_DIR.fullmatch(folder) else ""), "", stem
+    return (folder if YEAR.fullmatch(folder) else ""), "", stem
 
 
 def main() -> None:
@@ -58,27 +42,22 @@ def main() -> None:
     rows = []
     for paper in sorted(args.root.rglob("*.pdf")):
         year, author, title = parse(paper)
-        tags = sorted(t for t, pat in THEMES.items() if re.search(pat, title, re.I))
         rows.append(
             {
                 "year": year,
                 "author": author,
                 "title": title,
-                "themes": "|".join(tags),
                 "path": str(paper),
             }
         )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(
-            fh, fieldnames=["year", "author", "title", "themes", "path"]
-        )
+        writer = csv.DictWriter(fh, fieldnames=["year", "author", "title", "path"])
         writer.writeheader()
         writer.writerows(rows)
 
-    untagged = sum(1 for r in rows if not r["themes"])
-    print(f"{len(rows)} papers -> {args.out} ({untagged} untagged by filename)")
+    print(f"{len(rows)} papers -> {args.out}")
 
 
 if __name__ == "__main__":

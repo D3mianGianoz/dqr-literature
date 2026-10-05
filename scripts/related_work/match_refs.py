@@ -23,6 +23,7 @@ YEAR = re.compile(r"\b((?:19|20)\d{2})\b")
 PAGE_FOOTER = re.compile(r"USES2.*?\d+\s*")
 # ". " that is *not* preceded by a capital, so "Richard Y. Wang" survives.
 SENTENCE = re.compile(r"(?<![A-Z])\.\s+")
+RANK = {"exact": 2, "exact:cited": 1, "weak": 0}
 
 
 def entries(text: str) -> dict[str, tuple[str, list[str], str]]:
@@ -72,7 +73,7 @@ def match(
     """
     year, sur, citation = row
     words = title_tokens(citation)
-    best, best_score, best_method = None, 0.0, "none"
+    best, best_method, best_rank = None, "none", -1
     for r in rows:
         blob = (r["author"] + " " + r["title"]).lower()
         if not sur or sur[0] not in blob or r["year"] != year:
@@ -82,18 +83,17 @@ def match(
         # surname only counts as corroboration, never as a requirement
         corroboration = sum(1 for s in sur if s in blob) >= 2
         if overlap >= 0.5:
-            score = 1.0
+            method = "exact"
         elif corroboration:
-            score = 0.8
+            method = "exact:cited"
         elif len(words) <= 2 or overlap < 0.25:
             # short or uninformative filename ("NFAD.pdf"): surname and year
             # agree but the title cannot corroborate. Real, but needs a human.
-            score = 0.3
+            method = "weak"
         else:
             continue
-        if score > best_score:
-            best, best_score = r, score
-            best_method = {1.0: "exact", 0.8: "exact:cited", 0.3: "weak"}[score]
+        if RANK[method] > best_rank:
+            best, best_method, best_rank = r, method, RANK[method]
     return best, best_method
 
 

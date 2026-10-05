@@ -27,92 +27,15 @@ performance on faulty data.
 
 ## Corpus
 
-`scripts/related_work/inventory.py` walks the literature root, parses year and
-title from filenames, tags themes, and writes `docs/literature/inventory.csv` (344 rows, 131
-untagged by filename alone). Re-run it as the collection grows.
+`scripts/related_work/inventory.py` walks the literature root, parses year,
+author and title from each filename, and writes `inventory.csv` (385 rows).
+Re-run it as the collection grows.
 
-| theme | papers |
-|---|---|
-| time-series anomaly detection | 125 |
-| data quality / cleaning | 50 |
-| sensor fault diagnosis | 36 |
-| structural health monitoring | 20 |
-| metrics / evaluation | 15 |
-| benchmarking | 11 |
-| model selection | 10 |
-| drift / contamination | 10 |
-| explainability | 9 |
+An earlier version tagged every paper with one of ten hand-tuned themes. That
+was removed: it covered only 58% of titles, one tag fired on nothing, and the
+largest caught 129 of 222 hits, so it carried no information. The index is now a
+faithful listing — year, author, title, path.
 
-## The SoA bibliography is a different literature
-
-`20240606_D31_Damiano_v1.pdf` (USES2 deliverable D3.1, sensor data quality) has
-**49 references spanning 1994–2024** — the data-quality foundations: Batini &
-Scannapieca, Wang & Strong, Karkouch, Teh, Klein & Lehner, Naumann & Rolker,
-Aggarwal, Chandola.
-
-**45 of the 49 have a local PDF** (`docs/literature/soa_citations.csv`), so the
-SoTA's foundational citations can be read directly rather than trusted
-second-hand.
-
-Earlier counts said 31, then 45. The first shortfall was a parsing bug, not
-missing files: author segments were split at initials, so "Richard Y. Wang"
-yielded the surname `richard`. A second bug matched on *any* surname, which
-linked "Wang & Strong" (1996) to "Wand & Wang" (1996) — same surname, same
-year, different paper. `match_refs.py` now requires the primary author, the
-year, and either title overlap or a second corroborating surname. Matches that
-rest on surname and year alone are labelled `weak` and flagged for a human;
-two entries are currently weak and were confirmed by eye.
-
-So the four genuinely absent are the textbooks and Malhotra (2015). Breunig's
-LOF *is* present — an earlier grep missed it because the file is titled simply
-`LOF`.
-
-Only four are genuinely absent, and three are textbooks rather than papers:
-
-| ref | work |
-|---|---|
-| [11] | Barnett & Lewis (1994), *Outliers in Statistical Data* - book |
-| [27] | Goodfellow, Bengio & Courville (2016), *Deep Learning* - book |
-| [30] | Hyndman & Athanasopoulos (2018), *Forecasting: Principles and Practice* - book |
-| [32] | Malhotra et al. (2015), LSTM networks for anomaly detection in time series |
-
-Textbooks would be cited from general knowledge rather than quoted. Note the
-collection *does* contain Aggarwal's *Outlier Analysis* and Sutton & Barto's
-*Reinforcement Learning*, so textbook presence is inconsistent rather than
-excluded by policy.
-
-The index also contains **five duplicate pairs**, so the count is not distinct
-works.
-
-### The corpus is wider than Zpapers
-
-The first index walked `Zpapers/` only. The `Literature/` root holds **41 more
-PDFs** in `Books/`, `Slides/`, `Stage/`, `Thesis/`, `Posters/`, `Tutorials/` and
-`Images/` — 385 in total. Several matter directly:
-
-- **Keogh, *Problems with TSAD*** (`Slides/`) — the critique behind Wu & Keogh's
-  "illusion of progress" claim, in the author's own words.
-- **Boniol lecture decks**, including one specifically on **evaluation
-  measures** — the author of both the VUS and the segmentation-measure papers,
-  which makes them a compact route into that cluster.
-- **`Expect the Unexpected`** (`Stage/waiting/`) — this is the Teh et al. 2021
-  paper the open research question cites.
-- **`Data Quality Dimensions`** (`Images/`) and the two `Stage/reports/` data
-  quality papers — likely the group's own output; worth checking authorship
-  before citing as external work.
-- Three **theses** (`Thesis/`) — Bosman on networked-embedded anomaly detection,
-  Delaine, and Selcuck.
-
-None of these are in the SoTA bibliography, so reading them does not close a
-bibliography gap. They are likely working notes for this project, and should be
-read before the collection is treated as settled.
-Aggarwal, Chandola) while the collection is weighted toward **recent anomaly
-detection and benchmarking**.
-
-Locally available and load-bearing for the gap argument: Teh (2020), Karkouch
-(2016), Nguyen (2023 survey), Wang (2019), Pang (2022), Haque (2024), Scholl
-(2023), plus the algorithm primaries — Isolation Forest, EIF, HBOS, LOF, SVDD,
-Keogh's SAX, LSTM, and Davis & Goadrich on precision-recall.
 
 ## Papers read in depth
 
@@ -724,7 +647,7 @@ SKAB and NAB are the most directly comparable to our pipeline; the others are go
 
 ## Not yet ingested
 
-- 327 of 344 papers are title-triaged only.
+- 340 of 385 papers are title-triaged only.
 - Read/unread counts are no longer tracked here. Run
   `python -m scripts.related_work.papers todo` — the reading log at
   `reading_log.csv` is the source of truth. The two counts written into this
