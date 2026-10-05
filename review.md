@@ -9,7 +9,7 @@ Everything below distinguishes what was read from what was only title-triaged.
 > titles instead of surnames ("Teh"). Both are fixed — `inventory.py` now keeps
 > `author`, and `match_refs.py` matches on surname plus year. The true figure is
 > **31 of 49 available locally**, including all seven citations carrying the
-> section 2.4 argument. `soa_citations.csv` records the per-reference result.
+> section 2.4 argument. `docs/literature/soa_citations.csv` records the per-reference result.
 
 ## Why this question
 
@@ -26,7 +26,7 @@ performance on faulty data.
 ## Corpus
 
 `scripts/related_work/inventory.py` walks the literature root, parses year and
-title from filenames, tags themes, and writes `inventory.csv` (344 rows, 131
+title from filenames, tags themes, and writes `docs/literature/inventory.csv` (344 rows, 131
 untagged by filename alone). Re-run it as the collection grows.
 
 | theme | papers |
@@ -48,7 +48,7 @@ untagged by filename alone). Re-run it as the collection grows.
 Scannapieca, Wang & Strong, Karkouch, Teh, Klein & Lehner, Naumann & Rolker,
 Aggarwal, Chandola.
 
-**31 of the 49 have a local PDF** (`soa_citations.csv`), so the SoA's
+**31 of the 49 have a local PDF** (`docs/literature/soa_citations.csv`), so the SoA's
 foundational citations can be read directly rather than trusted second-hand.
 The 18 that cannot are the older data-quality canon and some IoT surveys.
 
@@ -191,9 +191,9 @@ Findings: the error types addressed are **mostly missing data and faults such
 as outliers, bias and drift**, and the most common detection solutions are
 **PCA and artificial neural networks**.
 
-That error taxonomy is nearly identical to `docs/disturbance_vocabulary.md`,
+That error taxonomy is nearly identical to `docs/research/vocabulary.md`,
 which is reassuring for its stability. PCA being the dominant approach is worth
-noting, since `docs/overlap.md` deferred it.
+noting, since `docs/research/positioning.md` deferred it.
 
 ### Scholl, Spiegler et al. (2023) — Integrated framework for data quality fusion
 
@@ -236,6 +236,149 @@ detectors*, not a gap.
    anomaly detection algorithm useful."*
 
 Point 5 is the field-level critique that your stated contribution answers.
+
+## Applied evidence: model-comparison findings
+
+Distinct from the papers read above, which report what studies found; these are
+the operational implications already drawn for this pipeline. Kept because they
+are specific and testable, not because they are general.
+
+## Source 1 — ECML 2026
+
+> _What Streaming Anomaly Detection Finds (and Misses) in Industrial Time Series_
+> Parrino et al., ECML PKDD 2026 Industrial Track
+
+### 1. Ensembling beats single-model selection
+
+**Finding:** simple mean over 29 models ranked top-6; top-4 selection outperformed the best individual model.
+
+**For us:** add LODA alongside TSOD-KNN and average their scores before thresholding.
+One line in `detection.py`: `score = (knn_score + loda_score) / 2`.
+
+### 2. LODA and KNN are the top individual performers
+
+**Ranking:** LODA (0.346) > CNN (0.294) > MCD (0.269) > SVM (0.264) > KNN (0.161).
+
+**For us:** LODA is a drop-in from `pyod` (`from pyod.models.loda import LODA`), faster than KNN,
+and handles higher-dimensional input better — relevant if we add SCADA channels.
+
+### 3. Online (batch-trained, fixed) > Streaming (adaptive) for low-velocity data
+
+**Finding:** Online models have higher _median_ VUS-PR than streaming models at low stream velocity.
+
+**For us:** our train-once-on-healthy-anchor approach is already the right paradigm. No adaptive
+mechanisms needed unless we see systematic drift over months.
+
+### 4. Train on a clean segment — z-normalize on training batch only
+
+**For us:** our 24 h anchor is deliberately clean; `StandardScaler` fit on training only. ✓
+Extend the training block if false-positive rate is high.
+
+### 5. Consensual false positives reveal domain events, not model failures
+
+**Finding:** recurring FP across models coincided with extreme tidal events and planned shutdowns.
+
+**For us:** tag known operational events in `manual_windows.csv` (add `operational_event` column) to
+exclude them from recall/precision accounting. Do **not** tune the threshold to suppress them —
+that hides real anomalies with similar signatures.
+
+### 6. Use VUS-PR with a left-buffer for early-detection credit
+
+**For us:** point-wise labels under-reward early detection. VUS-PR with a ~10%-of-window
+left-buffer (e.g., 12 min for a 2 h window) is a better metric. Available from the StrAD repo.
+
+### 7. Isolated anomalies are hard; clustered ones are easy
+
+**Finding:** multi-event clusters detected by 20–23/29 models; isolated events by 0–2.
+
+**For us:** if recall is low on single-event windows, widen the window or increase
+`WINDOW_SIZE` so the model sees the run-up.
+
+---
+
+## Source 2 — Applied Sciences Special Issue 2023
+
+> _Special Issue on Unsupervised Anomaly Detection_, Goldstein, Applied Sciences 2023.
+> Editorial summary of 12 papers. Broad scope — relevance to our pipeline is partial.
+
+**Verdict: low novelty impact, confirms our choices.**
+
+### What it validates
+
+- **Classical ML > deep learning** (Rewicki et al.): TSOD-KNN is the right call; deep models
+  need more data and are harder to calibrate for 2–10 h windows.
+- **Semi-supervised = train on normal class only**: our healthy-anchor approach is the stronger
+  setup vs. fully unsupervised. No change needed.
+- **Contextual anomaly → point anomaly mapping**: TSOD-KNN sliding-window scoring is the
+  standard correct approach for sub-sequence anomalies.
+
+### One actionable idea
+
+**Explainability** — two papers focused on explaining _why_ a detection fires. Per-sensor score
+contribution in the review plot would improve operator trust. TSOD sub-scores are already
+available; surfacing them in `plot_strain_labels` is a low-effort addition.
+
+### What is not relevant
+
+| Paper                                         | Why                            |
+| --------------------------------------------- | ------------------------------ |
+| GAN digital twin (Lian et al.)                | Overkill for our window count  |
+| MST-VAE (Pham et al.)                         | Deep learning, ruled out above |
+| HMM for KPI correlation (Shang et al.)        | Distributed-system framing     |
+| Adaptive ARIMA (Kozitsin et al.)              | Univariate forecasting         |
+| IoT feature-evolving streams (Al-amri et al.) | Our dimensionality is stable   |
+
+---
+
+## Final Summary — Prioritised Action List
+
+| Priority   | Action                                                 | Effort      | Source     |
+| ---------- | ------------------------------------------------------ | ----------- | ---------- |
+| **High**   | Add LODA scorer, ensemble `mean(knn, loda)`            | ~10 lines   | ECML       |
+| **High**   | Adopt VUS-PR (left-buffer ~10% window) as eval metric  | ~1 dep      | ECML       |
+| **Medium** | Extend training block (>24 h) if FP rate stays high    | config knob | ECML       |
+| **Medium** | Add `operational_event` column to `manual_windows.csv` | CSV edit    | ECML       |
+| **Low**    | Per-sensor score contribution in review plot           | ~15 lines   | Appl. Sci. |
+| **Skip**   | Deep learning models (VAE, LSTM, Transformer)          | —           | both       |
+| **Skip**   | Adaptive/streaming model updates                       | —           | ECML       |
+
+---
+
+## Source 3 — Dataset construction resources
+
+Both reviewed papers assumed an existing labeled dataset. Our pipeline **builds its own** — which is both the constraint and the novel contribution. The notes below cover best practices from the broader TSAD literature.
+
+### Train / test split rules (time series)
+
+- **Always chronological** — never shuffle. Train on a past block, test on future windows.
+- **Current setup is correct:** train = first 24 h of the Nov 2023 healthy anchor; test = all cataloged raw windows (post-2024). Natural chronological split with a ~5-month gap.
+- Insert a gap period between train and test if slow sensor drift is suspected (reduces lookahead bias).
+- Use `sklearn.model_selection.TimeSeriesSplit` for rolling-window cross-validation if you want statistical confidence on recall/precision.
+
+### Healthy anchor sizing
+
+- 1 week (Nov 2023) gives a comfortable buffer. Only the first `TRAINING_HOURS` (default 24 h) are used for fitting — extend via config if the training plot shows the model learning drift rather than a clean baseline.
+- Do **not** extend into operational or ambiguous periods — the contamination assumption (`CONTAMINATION = 0.01`) breaks if the anchor is not genuinely clean.
+
+### Labeling quality
+
+- Prefer **segment-level labels** (begin/end timestamps) over point-wise where possible; the current schema stores both.
+- Tag known operational events (`operational_event` column in `manual_windows.csv`) — do not tune the threshold to suppress them; that hides real anomalies with similar signatures.
+- Isolated single-event anomalies are harder to detect; widening `window_size` so the model sees the run-up improves recall (ECML finding).
+
+### Relevant public benchmarks
+
+These are the closest analogs in public literature — useful for calibrating recall and for future comparison. All are listed in [yzhao062/anomaly-detection-resources](https://github.com/yzhao062/anomaly-detection-resources).
+
+| Dataset / Benchmark                          | Domain                             | Anomaly type                         | Link                                                                                       |
+| -------------------------------------------- | ---------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------ |
+| **SKAB**                                     | Industrial sensor data             | Machine/process anomalies            | [github](https://github.com/waico/skab)                                                    |
+| **NAB**                                      | Real-time multi-domain time series | Early-detection benchmark            | [github](https://github.com/numenta/NAB)                                                   |
+| **ODDS**                                     | Mixed tabular benchmark set        | Classical outlier detection datasets | [site](http://odds.cs.stonybrook.edu/#table1)                                              |
+| **ELKI Outlier Datasets**                    | Benchmark dataset collection       | Mixed outlier datasets               | [site](https://elki-project.github.io/datasets/outlier)                                    |
+| **Unsupervised Anomaly Detection Dataverse** | Benchmark dataset collection       | Mixed outlier datasets               | [dataset](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/OPQMVF) |
+
+SKAB and NAB are the most directly comparable to our pipeline; the others are good fallback references for broader classical outlier detection.
 
 ## Not yet ingested
 
