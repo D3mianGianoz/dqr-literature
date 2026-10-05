@@ -10,7 +10,7 @@ with given names and the inventory drops the author segment from the title.
 Usage:
     pdftotext paper.pdf /tmp/refs.txt
     python -m scripts.related_work.match_refs --refs /tmp/refs.txt \\
-        --inventory docs/related_work/inventory.csv --out docs/related_work/soa_citations.csv
+        --inventory data/inventory.csv --out data/soa_citations.csv
 """
 
 import argparse
