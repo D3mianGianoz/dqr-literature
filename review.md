@@ -162,6 +162,66 @@ SHM framing that makes the distinction explicit: **sensor faults reduce
 measurement fidelity, while extreme events threaten the monitored structure.**
 Both corrupt the same signals, and separating them is the core SHM problem.
 
+### De Bruijn, Meratnia, et al. (2016) — Benchmark datasets for fault detection and classification in sensor data
+
+The precedent behind the open research question. States that although
+algorithmic solutions are proposed, **"the field lacks a set of benchmark sensor
+datasets,"** and defines what one must satisfy:
+
+- **(a)** based on **real-world raw sensor data** from various sensor deployments;
+- **(b)** contains **natural *or* artificially injected** faulty data reflecting
+  various deployment problems, **including missing data points**;
+- **(c)** **all data points annotated with ground truth** — whether accurate,
+  and if faulty, the type.
+
+They publish three such datasets totalling **5,783,504 points** across 10 Intel
+Lab, 16 Smart Santander and SensorScope sensors, with fault types *random,
+malfunction, bias, drift, polynomial drift* and combinations.
+
+Three consequences for this project:
+
+1. Criterion (b) admits **natural** faults. Declining fault injection does not
+   disqualify a dataset from being a benchmark.
+2. Criterion (c) asks whether data is *accurate* and what *data* fault it is —
+   not what physically broke the gauge. Stale, missing and out-of-range data
+   are annotatable without a maintenance record. That is a materially weaker
+   claim than fault diagnosis, and it is available here.
+3. **Scale.** 5.78M points across three datasets; the current run scores
+   9.6M rows over ten gauges. The dataset is already benchmark-scale by these
+   criteria.
+
+### Tatbul, Lee, Alam & Bekiroglu (2018) — Precision and Recall for Time Series
+
+Opens with the observation that classical AD concerns **point-based** anomalies,
+whereas **many real-world anomalies are range-based** — they occur over a period
+of time. Extends precision and recall to measure *ranges*, with a
+customisation parameter for domain-specific preferences about how much boundary
+error is tolerable.
+
+This is the metric family RQ3 needs. The blind pipeline emits episodes —
+contiguous ranges — so point-wise precision and recall mis-measure it by
+construction, and Tatbul's range-based form with an explicit tolerance parameter
+is more directly applicable than the segmentation measures cited above.
+
+### Nguyen, et al. (2019) — Verifying the correctness of IoT sensor data in real time
+
+Verification **before storage**, using a forecasting technique to estimate the
+correct value — framed around "the faulty data should be detected and corrected
+as early as possible." This is the data-cleaning use case stated as a research
+problem, and it is the closest framing to the intended contribution.
+
+### Foorthuis (2021) — On the nature and types of anomalies
+
+Notes that the concept of an anomaly "is typically ill defined and perceived as
+vague and **domain-dependent**," and that despite roughly 250 years of
+publications no comprehensive concrete overview of anomaly types existed.
+Presents a domain-independent **typology organised along five dimensions**
+starting with data type and cardinality of relationship.
+
+Useful as an external check on `docs/research/vocabulary.md`, and as support for
+treating the operational/fault boundary as a known difficulty rather than a
+local invention.
+
 ## What this means for the study
 
 The literature converges on four requirements that map directly onto the current
@@ -175,6 +235,7 @@ blind pipeline:
 | analytical redundancy over multiple sensors | SHM FD 2023 | 1 of 10 strain gauges used |
 | assume training data is clean | Donné & Davis 2026 | healthy anchor never checked for contamination |
 | expect new algorithms to beat simple baselines | Bake Off Redux 2024 | untested here; ROC and KNN have no simple baseline |
+| point metrics mis-measure range anomalies | Tatbul et al. 2018 | pipeline emits episodes; no range-based metric in use |
 
 And one open transfer question:
 
@@ -382,7 +443,10 @@ SKAB and NAB are the most directly comparable to our pipeline; the others are go
 
 ## Not yet ingested
 
-- 336 of 344 papers are title-triaged only.
+- 327 of 344 papers are title-triaged only.
+- 26 of the 31 locally available SoTA references are read; the algorithm
+  primaries (Isolation Forest, EIF, HBOS, LOF, SVDD, SAX, LSTM) and Ni et al.
+  2009 are catalogued but not read.
 - The 2025-2026 metrics cluster (VUS, segmentation measures) is only partly read.
 - The seven section-2.4 citations behind the gap argument are not locally
   available and have not been read in full.
