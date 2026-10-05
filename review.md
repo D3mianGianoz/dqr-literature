@@ -1,7 +1,8 @@
 # Related work: do anomaly detection methods suit automated sensor-data cleaning?
 
-Status: **second tranche.** 344 papers inventoried, 11 read in depth.
+Status: **third tranche.** 344 papers inventoried, 12 read in depth.
 Everything below distinguishes what was read from what was only title-triaged.
+Counts come from `reading_log.csv`, not from prose.
 
 > **Correction.** An earlier version claimed none of the SoA's 49 references had a
 > local PDF. That was a false negative: the inventory dropped the author segment
@@ -250,6 +251,72 @@ arguing injection is testing *infrastructure*, not a contribution — a differen
 claim from the one being set aside. Worth deciding deliberately rather than by
 default.
 
+### Nguyen, Kiet, Lee, Yeo & Son (2023) — Comprehensive survey of sensor data verification in IoT
+
+The survey the thesis leans on for its classification. Organises the whole
+verification problem space along six axes:
+
+1. anomaly classification
+2. sensor data verification frameworks
+3. verification methods — **anomaly detection and anomaly correction**
+4. **evaluation methods** for verification
+5. technology and tools
+6. challenges and future research
+
+The pipeline so far covers (2) and detection within (3). Axis **(4) is
+unimplemented**, which is where RQ1 and RQ3 land. Note also that detection and
+*correction* are treated as one axis: the project currently does neither, and
+correction is arguably the more useful half for automated cleaning.
+
+### Karkouch, Mousannif, Al Moatassime & Noel (2016) — Data quality in IoT: a state-of-the-art survey
+
+The survey behind the thesis's central methodological claim that detection
+methods *"focus on identifying deviations from the norm, overlooking other
+pertinent domain parameters such as sensor precision or range."* Its framing is
+that poor-quality data make IoT decisions unsound, and it reviews DQ
+enhancement across interpretation, integration, deduplication and cleaning —
+not only detection.
+
+Supports the argument that sensor **specification** parameters belong in the
+pipeline, which the withdrawn codebook had explicitly excluded.
+
+### Wang, Bah & Hammad (2019) — Progress in outlier detection techniques
+
+A survey of outlier detection from 2000–2019, organised into distance-,
+clustering-, density-, ensemble- and learning-based methods, with pros, cons
+and open challenges per category. The source for the thesis's ensemble-learning
+gap (base learner selection, quantity, combination strategy).
+
+Ensemble **combination strategy** is directly relevant to RQ2, which asks whether
+ROC and KNN are complementary — the survey frames that as a known open design
+choice rather than a settled one.
+
+### Batini & Scannapieca (2006) — Data quality: concepts, methodologies and techniques
+
+The foundational reference for the whole data-quality framing, cited first in
+the SoTA. Establishes data quality as a multidimensional, context-dependent
+property rather than a single score — which is the premise Scholl's fusion work
+later tries to collapse into one value.
+
+### Davis & Goadrich (2006) — The relationship between precision-recall and ROC curves
+
+Shows PR curves are more informative than ROC under **heavily skewed** data, and
+that a curve dominates in ROC space **if and only if** it dominates in PR space,
+with an efficient algorithm for the achievable PR curve.
+
+Directly relevant to RQ1 and RQ3: the strain sample is extremely skewed —
+detector-selected, 69 of 74 episodes labelled anomalous — so ROC-style reporting
+would misrepresent performance.
+
+### Haque, Chowdhury & Soliman (2024) — WSN anomaly detection using machine learning
+
+A survey of ML for anomaly detection in wireless sensor networks, spanning
+supervised, unsupervised and semi-supervised approaches, motivated explicitly
+by noisy, unreliable sensed data and civil-engineering structural monitoring.
+
+Cited in the thesis for evaluation on real-world data. Also confirms that SHM is
+already a named application domain for this method family.
+
 ## What this means for the study
 
 The literature converges on four requirements that map directly onto the current
@@ -264,6 +331,9 @@ blind pipeline:
 | assume training data is clean | Donné & Davis 2026 | healthy anchor never checked for contamination |
 | expect new algorithms to beat simple baselines | Bake Off Redux 2024 | untested here; ROC and KNN have no simple baseline |
 | point metrics mis-measure range anomalies | Tatbul et al. 2018 | pipeline emits episodes; no range-based metric in use |
+| ROC misleads under heavy skew | Davis & Goadrich 2006 | candidate sample is 69/74 anomalous |
+| sensor specification parameters are needed | Karkouch et al. 2016 | excluded by the withdrawn codebook |
+| detection and correction are one axis | Nguyen et al. 2023 | detection only; no correction |
 
 And one open transfer question:
 
@@ -472,9 +542,10 @@ SKAB and NAB are the most directly comparable to our pipeline; the others are go
 ## Not yet ingested
 
 - 327 of 344 papers are title-triaged only.
-- 25 of the 31 locally available SoTA references are read. The algorithm
-  primaries (Isolation Forest, EIF, HBOS, LOF, SVDD, SAX, LSTM) are catalogued
-  but not read.
+- Read/unread counts are no longer tracked here. Run
+  `python -m scripts.related_work.papers todo` — the reading log at
+  `reading_log.csv` is the source of truth. The two counts written into this
+  file previously were both wrong.
 - The 2025-2026 metrics cluster (VUS, segmentation measures) is only partly read.
 - The seven section-2.4 citations behind the gap argument are not locally
   available and have not been read in full.
