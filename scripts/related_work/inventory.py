@@ -40,7 +40,11 @@ def parse(paper: Path) -> tuple[str, str, str]:
     stem = paper.stem.replace("_", " ").replace("-", " ")
     match = YEAR.search(stem)
     if match:
-        return match.group(0), stem[: match.start()].strip(), stem[match.end() :].strip()
+        return (
+            match.group(0),
+            stem[: match.start()].strip(),
+            stem[match.end() :].strip(),
+        )
     folder = paper.parent.name
     return (folder if YEAR_DIR.fullmatch(folder) else ""), "", stem
 

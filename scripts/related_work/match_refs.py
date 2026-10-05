@@ -60,7 +60,9 @@ def title_tokens(citation: str) -> set[str]:
     return {w for w in re.findall(r"[a-z]{4,}", title.lower()) if w not in stop}
 
 
-def match(row: tuple[str, list[str], str], rows: list[dict[str, str]]) -> tuple[dict[str, str] | None, str]:
+def match(
+    row: tuple[str, list[str], str], rows: list[dict[str, str]]
+) -> tuple[dict[str, str] | None, str]:
     """Return (row, method).
 
     The primary author must match, the year must match, and either the titles

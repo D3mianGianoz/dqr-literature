@@ -32,10 +32,18 @@ def find(query: str | None, ref: str | None) -> tuple[dict[str, str], str | None
     if ref:
         for r in _load(SOA):
             if r["ref"] == ref and r["local"] == "yes":
-                return {"path": r["local_path"], "citation": r["citation"], "year": r["year"]}, "soa"
+                return {
+                    "path": r["local_path"],
+                    "citation": r["citation"],
+                    "year": r["year"],
+                }, "soa"
     for r in _load(SOA):  # a SoTA citation is more specific than a collection entry
         if r["local"] == "yes" and query and query.lower() in r["surnames"].lower():
-            return {"path": r["local_path"], "citation": r["citation"], "year": r["year"]}, "soa"
+            return {
+                "path": r["local_path"],
+                "citation": r["citation"],
+                "year": r["year"],
+            }, "soa"
     for r in _load(INVENTORY):
         if query and (
             query.lower() in r["author"].lower() or query.lower() in r["title"].lower()
@@ -61,7 +69,7 @@ def show(query: str | None, ref: str | None, chars: int) -> None:
         at = 0
     body = flat[at : at + chars]
     name = Path(row["path"]).stem
-    print(f"### {name} [{source}] {row.get('year','')}")
+    print(f"### {name} [{source}] {row.get('year', '')}")
     print(textwrap.fill(body, 100))
 
 
@@ -82,7 +90,9 @@ def mark(query: str | None, ref: str | None) -> None:
         }
     )
     with LOG.open("w", newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=["key", "source", "year", "soa_ref", "citation"])
+        w = csv.DictWriter(
+            fh, fieldnames=["key", "source", "year", "soa_ref", "citation"]
+        )
         w.writeheader()
         w.writerows(sorted(entries, key=lambda e: (e["source"], e["key"])))
     print(f"logged: {key}  ({len(entries)} read)")
@@ -95,8 +105,10 @@ def todo() -> None:
     inv = _load(INVENTORY)
     soa_unread = [r for r in soa if Path(r["local_path"]).stem not in read]
     inv_unread = [r for r in inv if Path(r["path"]).stem not in read]
-    print(f"read: {len(read)}   SoTA local {len(soa)} ({len(soa_unread)} unread)"
-          f"   collection {len(inv)} ({len(inv_unread)} unread)")
+    print(
+        f"read: {len(read)}   SoTA local {len(soa)} ({len(soa_unread)} unread)"
+        f"   collection {len(inv)} ({len(inv_unread)} unread)"
+    )
     print("\nunread SoTA references, in bibliography order:")
     for r in soa_unread:
         print(f"  [{r['ref']:>2}] {r['year']} {r['surnames']}")
@@ -113,9 +125,11 @@ def main() -> None:
             c.add_argument("--chars", type=int, default=1400)
     sub.add_parser("todo")
     a = ap.parse_args()
-    {"show": lambda: show(a.query, a.ref, a.chars),
-     "mark": lambda: mark(a.query, a.ref),
-     "todo": todo}[a.cmd]()
+    {
+        "show": lambda: show(a.query, a.ref, a.chars),
+        "mark": lambda: mark(a.query, a.ref),
+        "todo": todo,
+    }[a.cmd]()
 
 
 if __name__ == "__main__":
