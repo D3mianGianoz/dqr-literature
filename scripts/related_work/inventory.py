@@ -1,6 +1,6 @@
 """Inventory the local paper collection for the related-work review.
 
-Walks a literature root, parses year and title from each filename, tags themes,
+Walks a literature root, parses year and title from each filename,
 and writes a CSV index. Re-runnable as the collection grows.
 
 Usage:
