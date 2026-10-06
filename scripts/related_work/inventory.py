@@ -47,7 +47,7 @@ def main() -> None:
                 "year": year,
                 "author": author,
                 "title": title,
-                "path": str(paper),
+                "path": str(paper.relative_to(args.root)),
             }
         )
 

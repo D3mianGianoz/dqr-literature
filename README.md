@@ -27,8 +27,9 @@ scripts/related_work/      the tools that build and query the above
 Run from this repository's root.
 
 ```bash
-PY=/Users/dgian/Code/repo/zensor/jupiler-22013_auo/.venv/bin/python
-LIT="/Users/dgian/Zensor Dropbox/.../99956_DQR_Data_Quality_Research/Literature"
+# set these to your local values
+PY=<path-to-jupiler-venv>/bin/python
+LIT=<path-to-Literature>
 
 $PY -m scripts.related_work.inventory --root "$LIT" --out data/inventory.csv
 pdftotext <thesis.pdf> /tmp/refs.txt
@@ -51,8 +52,7 @@ The index is currently built over the whole `Literature/` tree, not just
 - **Record matches you cannot verify as `weak`,** not as absent and not as
   found. `match_refs.py` labels a surname-and-year-only match `weak` because
   filenames truncate titles; those need an eye.
-- **Absolute paths in `data/` are machine-specific** by design — this is a
-  personal index, not a shipped dataset.
+- **Paths in `data/` are relative to the `Literature/` corpus root**, so the index survives being shared.
 
 ## Open
 
