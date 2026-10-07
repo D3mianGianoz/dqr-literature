@@ -29,13 +29,13 @@ Run from this repository's root.
 ```bash
 # set these to your local values
 PY=<path-to-jupiler-venv>/bin/python
-LIT=<path-to-Literature>
+LIT=<path-containing-Literature>
 
 $PY -m scripts.related_work.inventory --root "$LIT" --out data/inventory.csv
 pdftotext <thesis.pdf> /tmp/refs.txt
 $PY -m scripts.related_work.match_refs --refs /tmp/refs.txt \
     --inventory data/inventory.csv --out data/soa_citations.csv
-$PY -m scripts.related_work.papers show "metric maze"   # compact abstract
+$PY -m scripts.related_work.papers show "metric maze" --root "$LIT"  # compact abstract
 $PY -m scripts.related_work.papers mark "metric maze"   # record as read
 $PY -m scripts.related_work.papers todo                  # what is unread
 ```

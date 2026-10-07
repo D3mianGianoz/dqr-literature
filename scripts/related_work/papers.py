@@ -15,12 +15,17 @@ import csv
 import re
 import subprocess
 import textwrap
+from collections import Counter
 from pathlib import Path
+
+import spacy
 
 DOCS = Path("data")
 INVENTORY = DOCS / "inventory.csv"
 SOA = DOCS / "soa_citations.csv"
 LOG = DOCS / "reading_log.csv"
+
+nlp = spacy.load("en_core_web_md")
 
 
 def _load(path: Path) -> list[dict[str, str]]:
@@ -53,18 +58,89 @@ def find(query: str | None, ref: str | None) -> tuple[dict[str, str], str]:
     raise SystemExit(f"no match for {query or ref!r}")
 
 
-def show(query: str | None, ref: str | None, chars: int) -> None:
+def _extract_abstract(sentences: list[str]) -> list[str]:
+    """Return the abstract sentences, or [] if none found.
+
+    Finds the sentence containing "abstract" (case-insensitive) near the front
+    of the document and collects the following sentences until a section
+    heading (an "Introduction"-style line) appears.
+    """
+    if not sentences:
+        return []
+    half = max(1, len(sentences) // 2)
+    abstract_idx = None
+    for i in range(half):
+        if "abstract" in sentences[i].lower():
+            abstract_idx = i
+            break
+    if abstract_idx is None:
+        return []
+    # skip a bare "abstract" heading
+    start = abstract_idx + 1 if sentences[abstract_idx].strip().lower() == "abstract" else abstract_idx
+    abstract = []
+    for sent in sentences[start:]:
+        low = sent.strip().lower()
+        # stop at the first section heading ("Introduction", "1 Introduction",
+        # "Introduction: Background ...")
+        if re.match(r"^\d*(?:\.\d+)?\s*introduction\b", low):
+            break
+        abstract.append(sent)
+    return abstract
+
+
+def _rank_sentences(doc: spacy.tokens.Doc, alpha: float = 0.4, beta: float = 0.6) -> list[int]:
+    """Rank sentences by position weight + term frequency.
+
+    Position weight favours earlier sentences (abstracts/front matter); term
+    frequency favours sentences whose words recur in the document. Returns
+    sentence indices, best first.
+    """
+    sentences = list(doc.sents)
+    n = len(sentences)
+    if n == 0:
+        return []
+    word_freq = Counter(w.text.lower() for w in doc if w.is_alpha and not w.is_stop)
+    max_freq = max(word_freq.values()) if word_freq else 1
+    scores = []
+    for i, s in enumerate(sentences):
+        s_words = [w.text.lower() for w in s if w.is_alpha and not w.is_stop]
+        if s_words:
+            tf = sum(word_freq.get(w, 0) for w in s_words) / (len(s_words) * max_freq)
+        else:
+            tf = 0.0
+        pos = 1.0 / (i + 1)
+        scores.append(alpha * pos + beta * tf)
+    return sorted(range(n), key=lambda i: scores[i], reverse=True)
+
+
+def _extractive_summary(doc: spacy.tokens.Doc, k: int = 3) -> list[str]:
+    """Top-k sentences by position weight + term frequency, in document order."""
+    order = _rank_sentences(doc)
+    chosen = sorted(order[:k])
+    sentences = list(doc.sents)
+    return [sentences[i].text.strip() for i in chosen]
+
+
+def show(
+    query: str | None, ref: str | None, chars: int, root: Path = Path(".")
+) -> None:
     row, source = find(query, ref)
+    pdf = Path(row["path"])
+    if not pdf.is_absolute():
+        pdf = root / pdf
     text = subprocess.run(
-        ["pdftotext", row["path"], "-"], capture_output=True, text=True
+        ["pdftotext", str(pdf), "-"], capture_output=True, text=True, check=True
     ).stdout
     flat = re.sub(r"\s+", " ", text)
-    # "abstract" also occurs mid-document ("abstracting heterogeneity"), so only
-    # trust it near the front; otherwise take the document opening.
-    at = flat.lower().find("abstract")
-    if at < 0 or at > 0.15 * len(flat):
-        at = 0
-    body = flat[at : at + chars]
+    doc = nlp(flat)
+    sentences = [s.text.strip() for s in doc.sents]
+    abstract = _extract_abstract(sentences)
+    if abstract:
+        body = " ".join(abstract)
+    else:
+        # no labelled abstract: fall back to an extractive summary
+        body = " ".join(_extractive_summary(doc, 3))
+    body = body[:chars]
     name = Path(row["path"]).stem
     print(f"### {name} [{source}] {row.get('year', '')}")
     print(textwrap.fill(body, 100))
@@ -120,10 +196,11 @@ def main() -> None:
         c.add_argument("--ref")
         if cmd == "show":
             c.add_argument("--chars", type=int, default=1400)
+            c.add_argument("--root", type=Path, required=True, help="literature corpus root")
     sub.add_parser("todo")
     a = ap.parse_args()
     {
-        "show": lambda: show(a.query, a.ref, a.chars),
+        "show": lambda: show(a.query, a.ref, a.chars, a.root),
         "mark": lambda: mark(a.query, a.ref),
         "todo": todo,
     }[a.cmd]()
