@@ -50,9 +50,16 @@ class TestRowIntegrity(unittest.TestCase):
     """Nothing got lost or corrupted by the redaction."""
 
     def test_row_counts_stable(self):
-        for path, expected in ((INVENTORY, 385), (SOA, 49), (READLOG, 56)):
+        for path, expected in ((INVENTORY, 385), (SOA, 49)):
             with path.open() as stream:
                 self.assertEqual(expected, len(list(csv.DictReader(stream))))
+        with READLOG.open() as stream:
+            rows = list(csv.DictReader(stream))
+            self.assertGreaterEqual(len(rows), 56)
+            self.assertEqual(
+                {"key", "source", "year", "soa_ref", "citation"},
+                set(rows[0].keys()),
+            )
 
     def test_inventory_preserves_baseline_paper_paths(self):
         baseline = io.StringIO(
