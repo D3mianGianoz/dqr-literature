@@ -181,13 +181,21 @@ def todo() -> None:
     inv = _load(INVENTORY)
     soa_unread = [r for r in soa if Path(r["local_path"]).stem not in read]
     inv_unread = [r for r in inv if Path(r["path"]).stem not in read]
+    print(f"Logged as read: {len(read)} papers")
     print(
-        f"read: {len(read)}   SoTA local {len(soa)} ({len(soa_unread)} unread)"
-        f"   collection {len(inv)} ({len(inv_unread)} unread)"
+        f"Local SoTA references: {len(soa)} total, "
+        f"{len(soa_unread)} unread"
     )
-    print("\nunread SoTA references, in bibliography order:")
-    for r in soa_unread:
-        print(f"  [{r['ref']:>2}] {r['year']} {r['surnames']}")
+    print(
+        f"Full inventory: {len(inv)} total, "
+        f"{len(inv_unread)} unread"
+    )
+    print("\nUnread local SoTA references, in bibliography order:")
+    if soa_unread:
+        for r in soa_unread:
+            print(f"  [{r['ref']:>2}] {r['year']} {r['surnames']}")
+    else:
+        print("  none")
 
 
 def main() -> None:
