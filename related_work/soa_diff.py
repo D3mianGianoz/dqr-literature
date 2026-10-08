@@ -3,17 +3,13 @@
 with local=yes is matched against data/inventory.csv and compared to the
 expected method/path recorded in the CSV.
 
-Usage: python scripts/related_work/soa_diff.py
+Usage: uv run python -m related_work.soa_diff
 """
 
 import csv
-from pathlib import Path
 
-from scripts.related_work.match_refs import match
-
-REPO = Path(__file__).resolve().parent.parent.parent
-INVENTORY = REPO / "data" / "inventory.csv"
-SOA = REPO / "data" / "soa_citations.csv"
+from related_work.config import INVENTORY, SOA, inventory_path
+from related_work.match_refs import match
 
 
 def main() -> int:
@@ -33,7 +29,7 @@ def main() -> int:
             if method != "none" and row["method"] == "none":
                 missing.append((row["ref"], row["method"], method))
         else:
-            if best_row.get("path", "") != row["local_path"]:
+            if best_row.get("path", "") != inventory_path(row["local_path"]):
                 promoted.append((row["ref"], row["method"], method))
             if method == "none" and row["method"] != "none":
                 regressions.append((row["ref"], row["method"], method))

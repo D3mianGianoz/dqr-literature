@@ -4,10 +4,10 @@ Compact abstract extraction, plus a machine-checkable reading log so read/unread
 counts stop being tracked in prose (they have been wrong twice).
 
 Usage:
-    python -m scripts.related_work.papers show "metric maze"   # compact abstract
-    python -m scripts.related_work.papers show --ref 20         # by SoTA ref number
-    python -m scripts.related_work.papers mark "metric maze"   # record as read
-    python -m scripts.related_work.papers todo                  # what is unread
+    uv run python -m related_work.papers show "metric maze"
+    uv run python -m related_work.papers show --ref 20
+    uv run python -m related_work.papers mark "metric maze"
+    uv run python -m related_work.papers todo
 """
 
 import argparse
@@ -20,10 +20,13 @@ from pathlib import Path
 
 import spacy
 
-DOCS = Path("data")
-INVENTORY = DOCS / "inventory.csv"
-SOA = DOCS / "soa_citations.csv"
-LOG = DOCS / "reading_log.csv"
+from related_work.config import (
+    INVENTORY,
+    READING_LOG as LOG,
+    SOA,
+    corpus_root,
+    inventory_path,
+)
 
 nlp = spacy.load("en_core_web_md")
 
@@ -44,7 +47,7 @@ def find(query: str | None, ref: str | None) -> tuple[dict[str, str], str]:
         r = soa[0]
         return (
             {
-                "path": r["local_path"],
+                "path": inventory_path(r["local_path"]),
                 "citation": r["citation"],
                 "year": r["year"],
             },
@@ -196,11 +199,11 @@ def main() -> None:
         c.add_argument("--ref")
         if cmd == "show":
             c.add_argument("--chars", type=int, default=1400)
-            c.add_argument("--root", type=Path, required=True, help="literature corpus root")
+            c.add_argument("--root", type=Path, help="literature root (defaults to $LIT)")
     sub.add_parser("todo")
     a = ap.parse_args()
     {
-        "show": lambda: show(a.query, a.ref, a.chars, a.root),
+        "show": lambda: show(a.query, a.ref, a.chars, corpus_root(a.root)),
         "mark": lambda: mark(a.query, a.ref),
         "todo": todo,
     }[a.cmd]()

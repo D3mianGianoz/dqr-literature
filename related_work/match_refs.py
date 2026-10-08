@@ -13,8 +13,7 @@ truncates the bibliographic citation.
 
 Usage:
     pdftotext paper.pdf /tmp/refs.txt
-    python -m scripts.related_work.match_refs --refs /tmp/refs.txt \\
-        --inventory data/inventory.csv --out data/soa_citations.csv
+    uv run python -m related_work.match_refs --refs /tmp/refs.txt
 """
 
 import argparse
@@ -23,6 +22,8 @@ import re
 from pathlib import Path
 
 import spacy
+
+from related_work.config import INVENTORY, SOA
 
 ENTRY = re.compile(r"\n\[(\d+)\]\s*")
 YEAR = re.compile(r"\b((?:19|20)\d{2})\b")
@@ -177,8 +178,8 @@ def match(
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--refs", type=Path, required=True, help="dumped bibliography text")
-    ap.add_argument("--inventory", type=Path, required=True)
-    ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--inventory", type=Path, default=INVENTORY)
+    ap.add_argument("--out", type=Path, default=SOA)
     args = ap.parse_args()
 
     rows = list(csv.DictReader(args.inventory.open(encoding="utf-8")))

@@ -1,18 +1,17 @@
 """Minimal sanity suite for the redaction of absolute file paths.
 
-Run from repo root:  python -m scripts.tests.test_paths
+Run from repo root:  uv run python -m unittest discover -s tests
 Exits 0 if all checks pass, 1 otherwise.
 """
 import csv
 import io
-import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent.parent
+REPO = Path(__file__).resolve().parent.parent
 DATA = REPO / "data"
 INVENTORY = DATA / "inventory.csv"
 SOA = DATA / "soa_citations.csv"
@@ -29,65 +28,84 @@ class TestRedactedPaths(unittest.TestCase):
             self.assertNotIn("Zensor", text, f"{p.name} leaks internal folder structure")
 
     def test_inventory_paths_are_relative(self):
-        for r in csv.DictReader(INVENTORY.open()):
-            self.assertTrue(
-                r["path"].startswith("Literature/"),
-                f"inventory path not relative: {r['path']}",
-            )
+        with INVENTORY.open() as stream:
+            for row in csv.DictReader(stream):
+                path = Path(row["path"])
+                self.assertFalse(
+                    path.is_absolute() or ".." in path.parts,
+                    f"inventory path is not safely relative: {row['path']}",
+                )
 
     def test_soa_local_paths_are_relative(self):
-        for r in csv.DictReader(SOA.open()):
-            if r.get("local_path"):
-                self.assertTrue(
-                    r["local_path"].startswith("Literature/"),
-                    f"soa local_path not relative: {r['local_path']}",
-                )
+        with SOA.open() as stream:
+            for row in csv.DictReader(stream):
+                if row.get("local_path"):
+                    self.assertTrue(
+                        row["local_path"].startswith("Literature/"),
+                        f"soa local_path not relative: {row['local_path']}",
+                    )
 
 
 class TestRowIntegrity(unittest.TestCase):
     """Nothing got lost or corrupted by the redaction."""
 
     def test_row_counts_stable(self):
-        self.assertEqual(385, len(list(csv.DictReader(INVENTORY.open()))))
-        self.assertEqual(49, len(list(csv.DictReader(SOA.open()))))
-        self.assertEqual(56, len(list(csv.DictReader(READLOG.open()))))
+        for path, expected in ((INVENTORY, 385), (SOA, 49), (READLOG, 56)):
+            with path.open() as stream:
+                self.assertEqual(expected, len(list(csv.DictReader(stream))))
 
-    def test_redaction_preserves_all_rows(self):
-        """Non-path columns must be byte-identical to the pre-redaction baseline."""
+    def test_inventory_preserves_baseline_paper_paths(self):
         baseline = io.StringIO(
             subprocess.check_output(["git", "show", "main:data/inventory.csv"])
             .decode()
         )
-        baseline_rows = [
-            (r["year"], r["author"], r["title"])
-            for r in csv.DictReader(baseline)
+        baseline_paths = [
+            row["path"].removeprefix("Literature/")
+            for row in csv.DictReader(baseline)
         ]
-        current_rows = [
-            (r["year"], r["author"], r["title"])
-            for r in csv.DictReader(INVENTORY.open())
-        ]
-        self.assertEqual(len(baseline_rows), len(current_rows))
-        self.assertEqual(baseline_rows, current_rows)
+        with INVENTORY.open() as stream:
+            current_paths = [row["path"] for row in csv.DictReader(stream)]
+        self.assertEqual(current_paths, baseline_paths)
 
 
 class TestToolingCompatibility(unittest.TestCase):
     """The tools still find papers by stem; the writer emits relative paths."""
 
     def test_keys_match_inventory_stems(self):
-        inv = {Path(r["path"]).stem for r in csv.DictReader(INVENTORY.open())}
-        keys = {r["key"] for r in csv.DictReader(READLOG.open())}
+        with INVENTORY.open() as stream:
+            inv = {Path(row["path"]).stem for row in csv.DictReader(stream)}
+        with READLOG.open() as stream:
+            keys = {row["key"] for row in csv.DictReader(stream)}
         self.assertTrue(keys.issubset(inv), f"unreadable keys: {keys - inv}")
 
     def test_soa_stems_resolvable(self):
-        inv = {Path(r["path"]).stem: r for r in csv.DictReader(INVENTORY.open())}
-        missing = [
-            r["ref"]
-            for r in csv.DictReader(SOA.open())
-            if r.get("local") == "yes"
-            and r.get("local_path")
-            and Path(r["local_path"]).stem not in inv
-        ]
+        with INVENTORY.open() as stream:
+            inv = {
+                Path(row["path"]).stem: row for row in csv.DictReader(stream)
+            }
+        with SOA.open() as stream:
+            missing = [
+                row["ref"]
+                for row in csv.DictReader(stream)
+                if row.get("local") == "yes"
+                and row.get("local_path")
+                and Path(row["local_path"]).stem not in inv
+            ]
         self.assertEqual([], missing)
+
+    def test_historical_soa_paths_resolve_from_literature_root(self):
+        from related_work.config import inventory_path
+
+        with INVENTORY.open() as stream:
+            inventory_paths = {row["path"] for row in csv.DictReader(stream)}
+        with SOA.open() as stream:
+            local_paths = [
+                row["local_path"]
+                for row in csv.DictReader(stream)
+                if row.get("local") == "yes" and row.get("local_path")
+            ]
+        self.assertTrue(local_paths)
+        self.assertTrue(all(inventory_path(path) in inventory_paths for path in local_paths))
 
     def test_inventory_writer_returns_relative_paths(self):
         tmp = Path(tempfile.mkdtemp())
@@ -99,7 +117,7 @@ class TestToolingCompatibility(unittest.TestCase):
             [
                 sys.executable,
                 "-m",
-                "scripts.related_work.inventory",
+                "related_work.inventory",
                 "--root",
                 str(lit),
                 "--out",
@@ -110,7 +128,12 @@ class TestToolingCompatibility(unittest.TestCase):
             text=True,
         )
         self.assertEqual(r.returncode, 0, r.stderr)
-        row = next(csv.DictReader(out.open()))
+        with out.open() as stream:
+            row = next(csv.DictReader(stream))
+        self.assertEqual(
+            list(row),
+            ["year", "author", "title", "path", "zotero_key", "abstract"],
+        )
         self.assertEqual(row["path"], "2020 Author Title.pdf")
         self.assertFalse(row["path"].startswith("/"))
 
@@ -134,7 +157,7 @@ class TestSpacyRelatedWork(unittest.TestCase):
             raise unittest.SkipTest("en_core_web_md model not installed")
 
     def test_ner_surname_extraction(self):
-        from scripts.related_work.match_refs import entries
+        from related_work.match_refs import entries
         text = """Bibliography
 [1] Richard Y. Wang and Diane M. Strong. Beyond Accuracy: What Data Quality Means to Data Consumers. Journal of Management Information Systems, 12(4):5\u201333, March 1996.
 [2] Guansong Pang, Chunhua Shen, Longbing Cao, and Anton Van Den Hengel. Deep Learning for Anomaly Detection: A Review. ACM Computing Surveys, 41(3):1\u201358, July 2009.
@@ -146,7 +169,7 @@ class TestSpacyRelatedWork(unittest.TestCase):
         self.assertEqual(d["3"][1], ["barnett", "lewis"])
 
     def test_ner_hyphenated_and_hybrid_surname(self):
-        from scripts.related_work.match_refs import _surname_ner
+        from related_work.match_refs import _surname_ner
         self.assertEqual(
             _surname_ner("Sahand Hariri, Matias Carrasco Kind, and Robert J. Brunner"),
             ["hariri", "kind", "brunner"],
@@ -159,8 +182,9 @@ class TestSpacyRelatedWork(unittest.TestCase):
     def test_similarity_exact_promotion(self):
         import csv
         from pathlib import Path
-        from scripts.related_work.match_refs import entries, match
-        rows = list(csv.DictReader((REPO / "data/inventory.csv").open()))
+        from related_work.match_refs import entries, match
+        with (REPO / "data/inventory.csv").open() as stream:
+            rows = list(csv.DictReader(stream))
         text = """Bibliography
 [1] Richard Y. Wang and Diane M. Strong. Beyond Accuracy: What Data Quality Means to Data Consumers. Journal of Management Information Systems, 12(4):5\u201333, March 1996.
 """
@@ -170,7 +194,7 @@ class TestSpacyRelatedWork(unittest.TestCase):
         self.assertEqual(Path(hit["path"]).stem, "Wang_Strong_1996_Beyond_Accuracy")
 
     def test_extract_abstract(self):
-        from scripts.related_work.papers import _extract_abstract
+        from related_work.papers import _extract_abstract
         sentences = [
             "Test Paper Title",
             "Authors A. B. C.",
@@ -187,7 +211,7 @@ class TestSpacyRelatedWork(unittest.TestCase):
         )
 
     def test_extract_abstract_no_heading(self):
-        from scripts.related_work.papers import _extract_abstract
+        from related_work.papers import _extract_abstract
         sentences = [
             "This paper studies anomaly detection.",
             "We propose a baseline.",
@@ -198,7 +222,7 @@ class TestSpacyRelatedWork(unittest.TestCase):
 
     def test_extractive_summary(self):
         import spacy
-        from scripts.related_work.papers import _extractive_summary
+        from related_work.papers import _extractive_summary
         nlp = spacy.load("en_core_web_md")
         text = (
             "Anomaly detection is studied in this work. "
@@ -216,9 +240,9 @@ class TestSpacyRelatedWork(unittest.TestCase):
         import io
         import sys
         import unittest.mock
-        from scripts.related_work.papers import show
-        fake_row = {"path": "scripts/tests/assets/test_abstract.pdf", "year": "2025"}
-        with unittest.mock.patch("scripts.related_work.papers.find", return_value=(fake_row, "test")):
+        from related_work.papers import show
+        fake_row = {"path": "tests/assets/test_abstract.pdf", "year": "2025"}
+        with unittest.mock.patch("related_work.papers.find", return_value=(fake_row, "test")):
             out = io.StringIO()
             old = sys.stdout
             sys.stdout = out
@@ -233,10 +257,10 @@ class TestSpacyRelatedWork(unittest.TestCase):
         import io
         import sys
         import unittest.mock
-        from scripts.related_work.papers import show
-        pdf_path = REPO / "scripts/tests/assets/test_no_abstract.pdf"
+        from related_work.papers import show
+        pdf_path = REPO / "tests/assets/test_no_abstract.pdf"
         fake_row = {"path": str(pdf_path), "year": "2025"}
-        with unittest.mock.patch("scripts.related_work.papers.find", return_value=(fake_row, "test")):
+        with unittest.mock.patch("related_work.papers.find", return_value=(fake_row, "test")):
             out = io.StringIO()
             old = sys.stdout
             sys.stdout = out

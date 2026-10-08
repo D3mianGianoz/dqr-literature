@@ -27,7 +27,7 @@ performance on faulty data.
 
 ## Corpus
 
-`scripts/related_work/inventory.py` walks the literature root, parses year,
+`related_work/inventory.py` walks the literature root, parses year,
 author and title from each filename, and writes `inventory.csv` (385 rows).
 Re-run it as the collection grows.
 
@@ -649,7 +649,7 @@ SKAB and NAB are the most directly comparable to our pipeline; the others are go
 
 - 340 of 385 papers are title-triaged only.
 - Read/unread counts are no longer tracked here. Run
-  `python -m scripts.related_work.papers todo` — the reading log at
+  `python -m related_work.papers todo` — the reading log at
   `reading_log.csv` is the source of truth. The two counts written into this
   file previously were both wrong.
 - The 2025-2026 metrics cluster (VUS, segmentation measures) is only partly read.

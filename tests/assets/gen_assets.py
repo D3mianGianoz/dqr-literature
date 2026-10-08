@@ -13,11 +13,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 SPEC = {
-    "test_abstract.md": None,
-    "test_no_abstract.md": None,
-}
-
-MD_ABS = """\
+    "test_abstract.md": """\
 # Test Paper Title
 Authors A. B. C.
 
@@ -28,9 +24,8 @@ Our results show improvements over the state of the art.
 
 ## Introduction
 Background and motivation for the study follow here.
-"""
-
-MD_NOABS = """\
+""",
+    "test_no_abstract.md": """\
 # Test Paper No Abstract
 Authors X. Y. Z.
 
@@ -39,7 +34,8 @@ We propose a simple baseline and compare it against existing methods.
 Results show improvements over the state of the art.
 
 Background and motivation follow here.
-"""
+""",
+}
 
 
 def build(name: str, md: str) -> Path:
@@ -57,6 +53,6 @@ def build(name: str, md: str) -> Path:
 
 
 if __name__ == "__main__":
-    for md, pdf in SPEC.items():
-        p = build(md, MD_ABS if md == "test_abstract.md" else MD_NOABS)
+    for name, content in SPEC.items():
+        p = build(name, content)
         print("wrote", p)
