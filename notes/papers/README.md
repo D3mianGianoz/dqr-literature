@@ -8,6 +8,7 @@ Selected paper-level evidence notes live here. Note filenames use descriptive ci
 - [Bagnall et al. / Bake Off Redux (2024)](bagnall-et-al-bake-off-redux-2024.md)
 - [Batini & Scannapieca (2006) — Data quality: concepts, methodologies and techniques](batini-scannapieca-2006-data-quality-concepts-methodologies-and-techniques.md)
 - [Bouman (2025) — *Rethinking Anomaly Detection: From Theory to Practice*](bouman-2025-rethinking-anomaly-detection-from-theory-to-practice.md)
+- [Bouman & Heskes (2025) — *Autoencoders for Anomaly Detection Are Unreliable*](bouman-heskes-2025-autoencoders-unreliable.md)
 - [Bouman, Bukhsh & Heskes (2024) — *Unsupervised Anomaly Detection Algorithms on Real-world Data: How Many Do We Need?* (JMLR 25)](bouman-bukhsh-heskes-2024-unsupervised-anomaly-detection-algorithms-on-real-world-data-how.md)
 - [Chavelli, Boniol & Thomazo (2025) — *Toward Interpretable Evaluation Measures for Time Series Segmentation* (arXiv:2510.23261)](chavelli-boniol-thomazo-2025-toward-interpretable-evaluation-measures-for-time-series-segm.md)
 - [Choose Wisely: model selection for anomaly detection (2023)](choose-wisely-model-selection-for-anomaly-detection-2023.md)
