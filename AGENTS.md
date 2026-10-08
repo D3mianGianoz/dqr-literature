@@ -3,6 +3,23 @@
 Run commands from the repository root. Keep local filesystem paths in the
 ignored `.env`, not in tracked files.
 
+## Repository boundary
+
+This repository owns literature evidence and tooling: `data/inventory.csv`,
+`data/reading_log.csv`, paper notes, bibliography matching, and the literature
+synthesis in `review.md`. The AUO study repository owns that study's research
+questions, design, vocabulary, validity limits, decisions, and project status.
+Keep project-specific decisions out of the literature synthesis; link to the
+AUO project-facing reference register when relevant.
+
+Detailed paper claims, qualifications, and unresolved source checks belong in
+`notes/papers/`. Keep `review.md` as a concise cross-paper synthesis and link
+to the evidence notes. In AUO, keep `docs/research/references.md` as a short
+register explaining why selected sources matter, with relative links back to
+this repository. Relative links assume the AUO and `dqr-literature`
+repositories are sibling checkouts. Do not add machine-specific paths to
+tracked files; put those in ignored local configuration.
+
 ## Setup
 
 Install Python dependencies and the spaCy language model:
@@ -63,6 +80,8 @@ uv run python -m related_work.papers todo
 
 Use `show --ref NUMBER` to select a bibliography reference. The reading log is
 `data/reading_log.csv`; update it through the `mark` command.
+Derive reading progress from these commands rather than copying counts into
+documentation; counts in prose become stale.
 
 ## Optional local Zotero import
 
