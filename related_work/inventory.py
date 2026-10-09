@@ -11,7 +11,6 @@ import argparse
 import csv
 import json
 import re
-import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -19,6 +18,7 @@ from related_work.config import (
     CORRECTIONS,
     INVENTORY,
     _pyproject_lit_root,
+    clean_alphanumeric,
     corpus_root,
 )
 
@@ -43,11 +43,7 @@ def parse(paper: Path) -> tuple[str, str, str]:
     return (folder if YEAR.fullmatch(folder) else ""), "", stem
 
 
-def _title_key(title: str) -> str:
-    normalized = unicodedata.normalize("NFKC", title).casefold()
-    return " ".join(
-        "".join(char if char.isalnum() else " " for char in normalized).split()
-    )
+_title_key = clean_alphanumeric
 
 
 def load_overrides() -> dict[str, dict[str, str]]:

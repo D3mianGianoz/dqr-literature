@@ -13,33 +13,30 @@ from related_work.match_refs import match
 
 
 def main() -> int:
-    rows = list(csv.DictReader(INVENTORY.open(encoding="utf-8")))
-    promoted: list[tuple[str, str, str]] = []
-    regressions: list[tuple[str, str, str]] = []
-    missing: list[tuple[str, str, str]] = []
+    with INVENTORY.open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    with SOA.open(encoding="utf-8") as fh:
+        soa_rows = list(csv.DictReader(fh))
 
-    for row in csv.DictReader(SOA.open(encoding="utf-8")):
+    path_diffs: list[tuple[str, str, str]] = []
+    regressions: list[tuple[str, str, str]] = []
+
+    for row in soa_rows:
         if row["local"] != "yes":
             continue
         entry = (row["year"], row["surnames"].split("|"), row["citation"])
         best_row, method = match(entry, rows)
         if best_row is None:
-            if method == "none" and row["method"] != "none":
-                regressions.append((row["ref"], row["method"], method))
-            if method != "none" and row["method"] == "none":
-                missing.append((row["ref"], row["method"], method))
+            regressions.append((row["ref"], row["method"], "none"))
         else:
-            if best_row.get("path", "") != inventory_path(row["local_path"]):
-                promoted.append((row["ref"], row["method"], method))
-            if method == "none" and row["method"] != "none":
-                regressions.append((row["ref"], row["method"], method))
-            if method != "none" and row["method"] == "none":
-                missing.append((row["ref"], row["method"], method))
+            expected_path = inventory_path(row["local_path"])
+            matched_path = best_row.get("path", "")
+            if matched_path != expected_path:
+                path_diffs.append((row["ref"], expected_path, matched_path))
 
-    print("promotions:", promoted)
+    print("path diffs:", path_diffs)
     print("regressions:", regressions)
-    print("missing:", missing)
-    return 0 if not (promoted or regressions or missing) else 1
+    return 0 if not (path_diffs or regressions) else 1
 
 
 if __name__ == "__main__":

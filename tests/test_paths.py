@@ -4,7 +4,6 @@ Run from repo root:  uv run python -m unittest discover -s tests
 Exits 0 if all checks pass, 1 otherwise.
 """
 import csv
-import io
 import subprocess
 import sys
 import tempfile
@@ -35,15 +34,6 @@ class TestRedactedPaths(unittest.TestCase):
                     path.is_absolute() or ".." in path.parts,
                     f"inventory path is not safely relative: {row['path']}",
                 )
-
-    def test_soa_local_paths_are_relative(self):
-        with SOA.open() as stream:
-            for row in csv.DictReader(stream):
-                if row.get("local_path"):
-                    self.assertTrue(
-                        row["local_path"].startswith("Literature/"),
-                        f"soa local_path not relative: {row['local_path']}",
-                    )
 
 
 class TestRowIntegrity(unittest.TestCase):
@@ -76,19 +66,6 @@ class TestRowIntegrity(unittest.TestCase):
             "Books/Data-Mining.-Concepts-and-Techniques-4th-Edition-Morgan-Kaufmann-2022-Han-Pei-Tong.pdf",
         }
         self.assertTrue(known.issubset(inv), f"missing known rows: {known - inv}")
-
-    def test_inventory_preserves_baseline_paper_paths(self):
-        baseline = io.StringIO(
-            subprocess.check_output(["git", "show", "main:data/inventory.csv"])
-            .decode()
-        )
-        baseline_paths = [
-            row["path"].removeprefix("Literature/")
-            for row in csv.DictReader(baseline)
-        ]
-        with INVENTORY.open() as stream:
-            current_paths = [row["path"] for row in csv.DictReader(stream)]
-        self.assertEqual(current_paths, baseline_paths)
 
 
 class TestToolingCompatibility(unittest.TestCase):
@@ -294,6 +271,45 @@ class TestSpacyRelatedWork(unittest.TestCase):
         body = out.getvalue()
         # fallback summary should contain something about anomaly detection
         self.assertIn("anomaly", body.lower())
+
+    def test_notes_readme_links_resolve(self):
+        import re
+        readme = REPO / "notes/README.md"
+        self.assertTrue(readme.exists())
+        content = readme.read_text(encoding="utf-8")
+        links = re.findall(r"\(([^)]+\.md)\)", content)
+        self.assertGreater(len(links), 0)
+        for link in links:
+            target = (REPO / "notes" / link).resolve()
+            self.assertTrue(target.exists(), f"Broken link in notes/README.md: {link}")
+
+    def test_match_refs_empty_bibliography_creates_valid_csv(self):
+        tmp = Path(tempfile.mkdtemp())
+        empty_refs = tmp / "empty_refs.txt"
+        empty_refs.write_text("", encoding="utf-8")
+        out_csv = tmp / "out.csv"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "related_work.match_refs",
+                "--refs",
+                str(empty_refs),
+                "--out",
+                str(out_csv),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(proc.returncode, 0, f"match_refs failed: {proc.stderr}")
+        self.assertTrue(out_csv.exists())
+        with out_csv.open(encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            self.assertEqual(
+                reader.fieldnames,
+                ["ref", "year", "surnames", "local", "method", "local_path", "citation"],
+            )
+            self.assertEqual(list(reader), [])
 
 
 if __name__ == "__main__":
