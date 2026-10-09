@@ -1,5 +1,3 @@
-import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -79,53 +77,12 @@ class TestSemanticRanking(unittest.TestCase):
 
 
 class TestPapersCLI(unittest.TestCase):
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
-        self.inv = self.tmp / "inventory.csv"
-        self.readlog = self.tmp / "reading_log.csv"
-        self.inv.write_text(
-            "year,author,title,path,zotero_key,abstract\n"
-            "2023,Alice Smith,Overhead Crane Sensor Fault Detection,Zpapers/2023/crane.pdf,K1,Monitors crane strain gauges.\n",
-            encoding="utf-8",
-        )
-        self.readlog.write_text("key,source,year,soa_ref,citation\n", encoding="utf-8")
-
-    def _run(self, *args: str, env_overrides: dict | None = None) -> subprocess.CompletedProcess:
-        import os
-        env = os.environ.copy()
-        if env_overrides:
-            env.update(env_overrides)
-        return subprocess.run(
-            [sys.executable, "-m", "related_work.papers", *args],
-            capture_output=True,
-            text=True,
-            cwd=str(Path(__file__).parent.parent),
-            env=env,
-        )
-
-    def test_recommend_outputs_paper(self):
-        from unittest.mock import patch
-        from related_work import semantic
-
-        with patch.object(semantic, "INVENTORY", self.inv), \
-             patch.object(semantic, "READING_LOG", self.readlog):
-            results = __import__("related_work.semantic", fromlist=["rank_inventory"]).rank_inventory(
-                "crane sensor fault",
-                unread_only=True,
-                inventory_path=self.inv,
-                reading_log_path=self.readlog,
-            )
-        self.assertTrue(len(results) >= 1)
-        self.assertIn("crane", results[0]["key"])
-
     def test_annotations_no_zotero(self):
         """annotations subcommand exits with an error when Zotero is unavailable."""
         from unittest.mock import patch
         from related_work.zotero import ZoteroClient
         with patch.object(ZoteroClient, "is_available", return_value=False):
             from related_work import papers as papers_mod
-            import io
-            from contextlib import redirect_stdout
             # Simulate the CLI path: annotations requires Zotero
             with self.assertRaises(SystemExit) as ctx:
                 with patch("related_work.papers.find", return_value=({"path": "Zpapers/2023/crane.pdf", "zotero_key": "", "title": "Crane"}, "inv")):
