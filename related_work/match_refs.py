@@ -170,7 +170,15 @@ def match(
             method = "weak"
         else:
             continue
-        if RANK[method] > best_rank:
+        # prefer the zotero-keyed row on a tie: it is the canonical corpus record
+        rank_better = RANK[method] > best_rank
+        rank_tie_with_zotero = (
+            best is not None
+            and RANK[method] == best_rank
+            and bool(r.get("zotero_key"))
+            and not best.get("zotero_key")
+        )
+        if rank_better or rank_tie_with_zotero:
             best, best_method, best_rank = r, method, RANK[method]
     return best, best_method
 

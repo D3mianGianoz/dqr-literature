@@ -9,17 +9,18 @@ from pathlib import Path
 from unittest.mock import patch
 
 from related_work.inventory import _zotero_items, enrich, main
+from related_work.config import corpus_root
 
 
 class TestZoteroInventory(unittest.TestCase):
-    def test_cli_defaults_to_lit_and_repository_inventory_path(self):
+    def test_cli_defaults_to_pyproject_and_repository_inventory_path(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / "Literature"
             root.mkdir()
             (root / "2020 Local Title.pdf").touch()
             output = Path(temp) / "inventory.csv"
             with (
-                patch.dict("os.environ", {"LIT": str(root)}),
+                patch("related_work.inventory.corpus_root", return_value=root),
                 patch("related_work.inventory.INVENTORY", output),
                 patch("sys.argv", ["inventory"]),
                 contextlib.redirect_stdout(io.StringIO()),
@@ -66,7 +67,7 @@ class TestZoteroInventory(unittest.TestCase):
                     }
                 )
             with (
-                patch.dict("os.environ", {"LIT": str(root)}),
+                patch("related_work.inventory.corpus_root", return_value=root),
                 patch("related_work.inventory.INVENTORY", output),
                 patch("sys.argv", ["inventory"]),
                 contextlib.redirect_stdout(io.StringIO()),
@@ -107,7 +108,7 @@ class TestZoteroInventory(unittest.TestCase):
                 },
             ]
             with (
-                patch.dict("os.environ", {"LIT": str(root)}),
+                patch("related_work.inventory.corpus_root", return_value=root),
                 patch("related_work.inventory.INVENTORY", output),
                 patch("related_work.inventory._zotero_items", return_value=items),
                 patch("sys.argv", ["inventory", "--zotero-local"]),

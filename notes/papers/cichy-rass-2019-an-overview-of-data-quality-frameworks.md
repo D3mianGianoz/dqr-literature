@@ -1,0 +1,5 @@
+# Cichy & Rass (2019) — *An Overview of Data Quality Frameworks*
+
+This survey compares 12 general-purpose frameworks across defining, assessing, and improving data quality. It finds substantial variation in quality dimensions, while completeness, timeliness, and accuracy recur most often. Assessment approaches also vary: most use objective metrics or combine metrics with subjective judgment, and their processes range from simple checks to multi-step organizational methods. Improvement commonly starts by diagnosing root causes, then prioritizes and applies actions and monitors whether quality improves.
+
+The paper distinguishes assessing quality from acting on the assessment. Automated anomaly detection can contribute to assessment, but by itself does not define quality requirements, establish why a reading is bad, correct it, or verify the result. The survey is about organizational frameworks rather than sensor-specific algorithms, so it provides framing rather than evidence that a detector will work on strain time series.

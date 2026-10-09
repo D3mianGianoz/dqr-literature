@@ -9,12 +9,18 @@ Usage:
 
 import argparse
 import csv
+import json
 import re
 import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from related_work.config import INVENTORY, corpus_root
+from related_work.config import (
+    CORRECTIONS,
+    INVENTORY,
+    _pyproject_lit_root,
+    corpus_root,
+)
 
 YEAR = re.compile(r"\b(19|20)\d{2}\b")
 
@@ -42,6 +48,32 @@ def _title_key(title: str) -> str:
     return " ".join(
         "".join(char if char.isalnum() else " " for char in normalized).split()
     )
+
+
+def load_overrides() -> dict[str, dict[str, str]]:
+    """Load metadata overrides from the corrections file."""
+    if not CORRECTIONS.exists():
+        return {}
+    try:
+        with CORRECTIONS.open("r", encoding="utf-8") as fh:
+            overrides = json.load(fh)
+    except (json.JSONDecodeError, IOError) as exc:
+        raise SystemExit(f"Could not load corrections file: {exc}") from exc
+    if not isinstance(overrides, dict) or any(
+        not isinstance(value, dict) for value in overrides.values()
+    ):
+        raise SystemExit(
+            "Corrections file must be a JSON object mapping paths to override objects."
+        )
+    return overrides
+
+
+def apply_overrides(rows: list[dict[str, str]], overrides: dict[str, dict[str, str]]) -> None:
+    """Apply overrides to rows based on the paper path."""
+    for row in rows:
+        if path := row.get("path"):
+            if override := overrides.get(path):
+                row.update(override)
 
 
 def enrich(
@@ -147,7 +179,7 @@ def _zotero_items() -> list[dict]:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--root", type=Path, help="literature root (defaults to $LIT)")
+    ap.add_argument("--root", type=Path, help="literature root (defaults to [tool.dqr-literature].lit_root in pyproject.toml)")
     ap.add_argument("--out", type=Path, help="CSV output path")
     ap.add_argument(
         "--zotero-local",
@@ -156,7 +188,14 @@ def main() -> None:
     )
     args = ap.parse_args()
     root = corpus_root(args.root)
+    configured_root = _pyproject_lit_root()
+    is_configured_root = (
+        configured_root is not None
+        and root.resolve() == configured_root.resolve()
+    )
     out = args.out or INVENTORY
+
+    overrides = load_overrides()
 
     rows = []
     for paper in sorted(root.rglob("*.pdf")):
@@ -185,12 +224,44 @@ def main() -> None:
                     }
                 )
 
+    apply_overrides(rows, overrides)
+
+    # Corrections belong to the configured corpus, not an explicitly alternate root.
+    if overrides and is_configured_root:
+        # Every correction must still exist in the inventory (no stale entries).
+        orphaned = sorted(
+            p for p in overrides if p not in {r["path"] for r in rows}
+        )
+        if orphaned:
+            raise SystemExit(
+                f"corrections file references {len(orphaned)} path(s) no longer "
+                f"in the inventory: {orphaned[:10]}"
+            )
+
+        # After a zotero-local enrich, corrections must cover exactly the rows
+        # missing zotero metadata — nothing missed, nothing stale.
+        if args.zotero_local:
+            non_zotero = {r["path"] for r in rows if not r.get("zotero_key")}
+            missing = sorted(non_zotero - set(overrides))
+            extra = sorted(set(overrides) - non_zotero)
+            if missing:
+                raise SystemExit(
+                    f"{len(missing)} rows lack zotero metadata and a correction: {missing[:10]}"
+                )
+            if extra:
+                raise SystemExit(
+                    f"{len(extra)} corrections are no longer needed (Zotero matched): "
+                    f"{extra[:10]}"
+                )
+
     out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w", newline="", encoding="utf-8") as fh:
+    tmp = out.with_name(out.name + ".tmp")
+    with tmp.open("w", newline="", encoding="utf-8") as fh:
         fields = ["year", "author", "title", "path", "zotero_key", "abstract"]
         writer = csv.DictWriter(fh, fieldnames=fields)
         writer.writeheader()
         writer.writerows(rows)
+    tmp.replace(out)
 
     message = f"{len(rows)} papers -> {out}"
     if args.zotero_local:

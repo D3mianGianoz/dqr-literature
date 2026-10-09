@@ -1,7 +1,24 @@
 # Repository workflow
 
-Run commands from the repository root. Keep local filesystem paths in the
-ignored `.env`, not in tracked files.
+Run commands from the repository root. Keep local filesystem paths in
+tracked files; configuration lives in `pyproject.toml`.
+
+## Repository boundary
+
+This repository owns literature evidence and tooling: `data/inventory.csv`,
+`data/reading_log.csv`, paper notes, bibliography matching, and the literature
+synthesis in `review.md`. The AUO study repository owns that study's research
+questions, design, vocabulary, validity limits, decisions, and project status.
+Keep project-specific decisions out of the literature synthesis; link to the
+AUO project-facing reference register when relevant.
+
+Detailed paper claims, qualifications, and unresolved source checks belong in
+`notes/papers/`. Keep `review.md` as a concise cross-paper synthesis and link
+to the evidence notes. In AUO, keep `docs/research/references.md` as a short
+register explaining why selected sources matter, with relative links back to
+this repository. Relative links assume the AUO and `dqr-literature`
+repositories are sibling checkouts. Do not add machine-specific paths to
+tracked files; put those in ignored local configuration.
 
 ## Setup
 
@@ -12,17 +29,17 @@ uv sync
 uv run python -m spacy download en_core_web_md
 ```
 
-Create `.env` from the example and set `LIT` to the Literature corpus
-directory. In each shell session, source it with variables exported:
+Configure the Literature corpus root in `pyproject.toml` under
+`[tool.dqr-literature]`:
 
-```bash
-test -f .env || cp .env.example .env
-set -a
-. ./.env
-set +a
+```toml
+[tool.dqr-literature]
+lit_root = "/path/to/Literature"
 ```
 
-Commands read `LIT` automatically. There is one canonical inventory:
+Commands read the corpus root automatically. The `--root` CLI flag still
+takes precedence over the config file.
+There is one canonical inventory:
 `data/inventory.csv`, with `year,author,title,path,zotero_key,abstract`
 columns. Paths are relative to the Literature root. Bibliography and
 reading-log files also default to their repository paths under `data/`;
@@ -31,7 +48,8 @@ supported `--root`, `--out`, and `--inventory` options can override defaults.
 
 ## Inventory and bibliography
 
-Build or refresh `data/inventory.csv` from PDFs under `LIT`. A plain refresh
+Build or refresh `data/inventory.csv` from PDFs under the configured corpus
+root. A plain refresh
 preserves Zotero fields for files whose relative paths have not changed:
 
 ```bash
@@ -47,8 +65,8 @@ uv run python -m related_work.match_refs --refs /tmp/refs.txt
 ```
 
 Matching writes `data/soa_citations.csv`. Matches marked `weak` need manual
-verification. Inventory PDF paths are relative to `LIT`; do not replace them
-with absolute paths.
+verification. Inventory PDF paths are relative to the corpus root; do not
+replace them with absolute paths.
 
 ## Paper reading
 
@@ -59,10 +77,17 @@ progress:
 uv run python -m related_work.papers show "metric maze"
 uv run python -m related_work.papers mark "metric maze"
 uv run python -m related_work.papers todo
+uv run python -m related_work.papers recommend "overhead crane sensor fault"
+uv run python -m related_work.papers annotations "donne and davis"
 ```
 
-Use `show --ref NUMBER` to select a bibliography reference. The reading log is
-`data/reading_log.csv`; update it through the `mark` command.
+Use `show --ref NUMBER` to select a bibliography reference. `recommend` ranks
+unread papers by spaCy semantic vector similarity to a natural language query
+(pass `--all` to include read papers). `annotations` fetches highlights,
+underlines, and notes directly from the local Zotero API for the paper.
+The reading log is `data/reading_log.csv`; update it through the `mark` command.
+Derive reading progress from these commands rather than copying counts into
+documentation; counts in prose become stale.
 
 ## Optional local Zotero import
 
