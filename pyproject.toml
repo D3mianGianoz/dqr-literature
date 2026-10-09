@@ -11,3 +11,6 @@ dependencies = [
 zotero = [
     "pyzotero>=1.15.2",
 ]
+
+[tool.dqr-literature]
+lit_root = "/Users/dgian/Zensor Dropbox/Damiano Gianotti/Zensor Internal Projects Folder/99956_DQR_Data_Quality_Research/Literature"
