@@ -1,7 +1,7 @@
 # Repository workflow
 
-Run commands from the repository root. Keep local filesystem paths in the
-ignored `.env`, not in tracked files.
+Run commands from the repository root. Keep local filesystem paths in
+tracked files; configuration lives in `pyproject.toml`.
 
 ## Repository boundary
 
@@ -29,16 +29,16 @@ uv sync
 uv run python -m spacy download en_core_web_md
 ```
 
-Create `.env` from the example and set `LIT` to the Literature corpus
-directory. In each shell session, source it with variables exported:
+Configure the Literature corpus root in `pyproject.toml` under
+`[tool.dqr-literature]`:
 
-```bash
-test -f .env || cp .env.example .env
-set -a
-. ./.env
-set +a
+```toml
+[tool.dqr-literature]
+lit_root = "/path/to/Literature"
 ```
 
+Commands read the corpus root automatically. The `--root` CLI flag still
+takes precedence over the config file.
 Commands read `LIT` automatically. There is one canonical inventory:
 `data/inventory.csv`, with `year,author,title,path,zotero_key,abstract`
 columns. Paths are relative to the Literature root. Bibliography and
@@ -76,10 +76,15 @@ progress:
 uv run python -m related_work.papers show "metric maze"
 uv run python -m related_work.papers mark "metric maze"
 uv run python -m related_work.papers todo
+uv run python -m related_work.papers recommend "overhead crane sensor fault"
+uv run python -m related_work.papers annotations "donne and davis"
 ```
 
-Use `show --ref NUMBER` to select a bibliography reference. The reading log is
-`data/reading_log.csv`; update it through the `mark` command.
+Use `show --ref NUMBER` to select a bibliography reference. `recommend` ranks
+unread papers by spaCy semantic vector similarity to a natural language query
+(pass `--all` to include read papers). `annotations` fetches highlights,
+underlines, and notes directly from the local Zotero API for the paper.
+The reading log is `data/reading_log.csv`; update it through the `mark` command.
 Derive reading progress from these commands rather than copying counts into
 documentation; counts in prose become stale.
 
