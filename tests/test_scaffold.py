@@ -241,6 +241,22 @@ class TestSlugGeneration(unittest.TestCase):
         self.assertFalse(slug.endswith("-"))
         self.assertNotIn("embedded-sen", slug)  # not cut mid-word
 
+    def test_comma_separated_bibtex_authors(self):
+        self.assertEqual(
+            _make_slug("Smith, John and Doe, Jane", "2023", "Title"),
+            "smith-doe-2023-title",
+        )
+        self.assertEqual(
+            _make_slug("Smith, John", "2023", "Title"),
+            "smith-2023-title",
+        )
+
+    def test_find_empty_args_raises(self):
+        from related_work import papers as p
+        with self.assertRaises(SystemExit) as ctx:
+            p.find(None, None)
+        self.assertIn("Provide a query string or --ref.", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

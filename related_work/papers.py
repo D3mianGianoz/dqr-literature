@@ -14,11 +14,14 @@ Usage:
 
 import argparse
 import csv
+import os
 import re
 import subprocess
 import textwrap
+import unicodedata
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 import spacy
 
@@ -29,25 +32,35 @@ from related_work.config import (
     SOA,
     corpus_root,
     inventory_path,
+    norm_text,
 )
 
 from related_work.zotero import ZoteroClient
 
-import unicodedata
+_nlp = None
 
-nlp = spacy.load("en_core_web_md")
+
+def _get_nlp() -> spacy.language.Language:
+    global _nlp
+    if _nlp is None:
+        _nlp = spacy.load("en_core_web_md")
+    return _nlp
 
 
 def _load(path: Path) -> list[dict[str, str]]:
-    return list(csv.DictReader(path.open(encoding="utf-8"))) if path.exists() else []
+    if not path.exists():
+        return []
+    with path.open(encoding="utf-8") as fh:
+        return list(csv.DictReader(fh))
 
 
-def _norm_text(s: str) -> str:
-    return unicodedata.normalize("NFKC", s).casefold()
+_norm_text = norm_text
 
 
 def find(query: str | None, ref: str | None) -> tuple[dict[str, str], str]:
     """Return (row, source) for a query over the SoTA citations then the inventory."""
+    if not query and not ref:
+        raise SystemExit("Provide a query string or --ref.")
     q_norm = _norm_text(query) if query else ""
     soa = [
         r
@@ -147,10 +160,13 @@ def _extract_paper_body(pdf: Path) -> str:
         text = subprocess.run(
             ["pdftotext", str(pdf), "-"], capture_output=True, text=True, check=True
         ).stdout
-    except (OSError, subprocess.CalledProcessError) as exc:
+    except FileNotFoundError as exc:
         raise SystemExit("pdftotext must be installed and available on PATH.") from exc
+    except subprocess.CalledProcessError as exc:
+        err = exc.stderr.strip() if exc.stderr else str(exc)
+        raise SystemExit(f"pdftotext failed to extract {pdf}: {err}") from exc
     flat = re.sub(r"\s+", " ", text)
-    doc = nlp(flat)
+    doc = _get_nlp()(flat)
     sentences = [s.text.strip() for s in doc.sents]
     abstract = _extract_abstract(sentences)
     if abstract:
@@ -192,16 +208,31 @@ def _make_slug(author: str, year: str, title: str, cap: int = 90) -> str:
     Title slug: slugified; a trailing subtitle introduced by " a " / " an "
     is dropped (e.g. "X a comprehensive evaluation" -> "X").
     """
+    def _extract_surname(p: str) -> str:
+        p = p.strip()
+        if "," in p:
+            return p.split(",", 1)[0].strip()
+        return p.rsplit(None, 1)[-1] if p else "unknown"
+
     auth = author or ""
     if "&" in auth:
         auth = auth.replace(" & ", " and ")
     if " and " in auth:
-        surnames = [p.strip().rsplit(None, 1)[-1] for p in auth.split(" and ") if p.strip()]
+        surnames = [_extract_surname(p) for p in auth.split(" and ") if p.strip()]
         if len(surnames) > 3:
             surnames = surnames[:2] + ["et al."]
         author_slug = _slugify(" ".join(surnames))
     elif "," in auth:
-        author_slug = _slugify(" ".join(p.strip() for p in auth.split(",")))
+        parts = [p.strip() for p in auth.split(",") if p.strip()]
+        if any("et al" in p.lower() for p in parts):
+            author_slug = _slugify(" ".join(parts))
+        elif len(parts) == 2 and not any(len(p.split()) > 2 for p in parts):
+            author_slug = _slugify(parts[0])
+        else:
+            surnames = [_extract_surname(p) for p in parts]
+            if len(surnames) > 3:
+                surnames = surnames[:2] + ["et al."]
+            author_slug = _slugify(" ".join(surnames))
     else:
         author_slug = _slugify(auth.rsplit(None, 1)[-1]) if auth.strip() else "unknown"
     author_slug = author_slug or "unknown"
@@ -246,12 +277,16 @@ def mark(query: str | None, ref: str | None) -> None:
             "citation": row.get("citation", "")[:200],
         }
     )
-    with LOG.open("w", newline="", encoding="utf-8") as fh:
+    tmp = LOG.with_suffix(".tmp")
+    with tmp.open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(
             fh, fieldnames=["key", "source", "year", "soa_ref", "citation"]
         )
         w.writeheader()
         w.writerows(sorted(entries, key=lambda e: (e["source"], e["key"])))
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp, LOG)
     print(f"logged: {key}  ({len(entries)} read)")
 
 
