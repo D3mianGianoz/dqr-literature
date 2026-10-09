@@ -127,6 +127,22 @@ class TestZoteroClient(unittest.TestCase):
         self.assertEqual(client.get_annotations_for_item(item_key=key, items=items), [])
         mock_items.assert_called_once()
 
+    @patch.object(ZoteroClient, "get_all_library_items")
+    def test_resolve_item_key_short_title_not_matched_as_substring(self, mock_items):
+        mock_items.return_value = [
+            {
+                "key": "BOOK1",
+                "data": {
+                    "itemType": "book",
+                    "title": "Data Quality",
+                },
+            },
+        ]
+        client = ZoteroClient()
+        self.assertIsNone(
+            client.resolve_item_key(title="Data Quality Concepts Methodologies and Techniques")
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
