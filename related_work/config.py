@@ -11,6 +11,7 @@ INVENTORY = DATA / "inventory.csv"
 SOA = DATA / "soa_citations.csv"
 READING_LOG = DATA / "reading_log.csv"
 CORRECTIONS = DATA / "inventory_corrections.json"
+NOTES = REPO / "notes" / "papers"
 
 
 def inventory_path(path: str) -> str:
