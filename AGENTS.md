@@ -39,7 +39,7 @@ lit_root = "/path/to/Literature"
 
 Commands read the corpus root automatically. The `--root` CLI flag still
 takes precedence over the config file.
-Commands read `LIT` automatically. There is one canonical inventory:
+There is one canonical inventory:
 `data/inventory.csv`, with `year,author,title,path,zotero_key,abstract`
 columns. Paths are relative to the Literature root. Bibliography and
 reading-log files also default to their repository paths under `data/`;
@@ -48,7 +48,8 @@ supported `--root`, `--out`, and `--inventory` options can override defaults.
 
 ## Inventory and bibliography
 
-Build or refresh `data/inventory.csv` from PDFs under `LIT`. A plain refresh
+Build or refresh `data/inventory.csv` from PDFs under the configured corpus
+root. A plain refresh
 preserves Zotero fields for files whose relative paths have not changed:
 
 ```bash
@@ -64,8 +65,8 @@ uv run python -m related_work.match_refs --refs /tmp/refs.txt
 ```
 
 Matching writes `data/soa_citations.csv`. Matches marked `weak` need manual
-verification. Inventory PDF paths are relative to `LIT`; do not replace them
-with absolute paths.
+verification. Inventory PDF paths are relative to the corpus root; do not
+replace them with absolute paths.
 
 ## Paper reading
 

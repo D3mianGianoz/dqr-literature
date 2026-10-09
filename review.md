@@ -1,7 +1,7 @@
 # Literature synthesis: sensor-data quality and anomaly detection
 
 This review synthesizes recurring findings across the literature. Source-level
-claims, qualifications, and open checks live in [`notes/papers/`](notes/papers/README.md).
+claims, qualifications, and open checks live in [`notes/papers/`](notes/README.md).
 The AUO study's questions, design, and decisions live in its
 [project-facing reference register](../jupiler-22013_auo/docs/research/references.md).
 
