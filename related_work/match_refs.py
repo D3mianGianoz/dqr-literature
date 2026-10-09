@@ -151,7 +151,10 @@ def match(
         blob = (r["author"] + " " + r["title"]).lower()
         if not sur or sur[0] not in blob or r["year"] != year:
             continue
-        blob_words = set(re.findall(r"[a-z0-9]+", blob))
+        blob_words = r.get("_tokens")
+        if blob_words is None:
+            blob_words = set(re.findall(r"[a-z0-9]+", blob))
+            r["_tokens"] = blob_words
         # title segment vs inventory title, both lowercased so case cannot
         # defeat the dense matcher. NER/tagger/etc. are disabled: we only need
         # vectors.
