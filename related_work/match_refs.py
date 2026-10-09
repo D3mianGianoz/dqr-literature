@@ -18,6 +18,7 @@ Usage:
 
 import argparse
 import csv
+import os
 import re
 from pathlib import Path
 
@@ -31,10 +32,17 @@ PAGE_FOOTER = re.compile(r"USES2.*?\d+\s*")
 # ". " that is *not* preceded by a capital, so "Richard Y. Wang" survives.
 SENTENCE = re.compile(r"(?<![A-Z])\.\s+")
 RANK = {"exact": 2, "exact:cited": 1, "weak": 0}
+FIELDNAMES = ["ref", "year", "surnames", "local", "method", "local_path", "citation"]
 
-# en_core_web_md is the sole user's model: load it once at import time.
-# No fallback path — a missing model is a hard failure (sole user).
-nlp = spacy.load("en_core_web_md")
+_nlp = None
+
+
+def _get_nlp() -> spacy.language.Language:
+    global _nlp
+    if _nlp is None:
+        _nlp = spacy.load("en_core_web_md")
+    return _nlp
+
 
 
 def _surname_regex(head: str) -> list[str]:
@@ -66,7 +74,7 @@ def _surname_ner(head: str) -> list[str]:
         chunk = chunk.strip()
         if not chunk:
             continue
-        doc = nlp(chunk)
+        doc = _get_nlp()(chunk)
         last_ent = None
         for ent in doc.ents:
             if ent.label_ == "PERSON":
@@ -135,23 +143,26 @@ def match(
     year, sur, citation = entry
     words = title_tokens(citation)
     best, best_method, best_rank = None, "none", -1
+    nlp_model = _get_nlp()
+    cited_title = _title_segment(citation).lower()
+    cited_doc = nlp_model(cited_title) if cited_title.strip() else None
+
     for r in rows:
         blob = (r["author"] + " " + r["title"]).lower()
         if not sur or sur[0] not in blob or r["year"] != year:
             continue
+        blob_words = set(re.findall(r"[a-z0-9]+", blob))
         # title segment vs inventory title, both lowercased so case cannot
         # defeat the dense matcher. NER/tagger/etc. are disabled: we only need
         # vectors.
-        cited_title = _title_segment(citation).lower()
-        # empty inventory titles give empty vectors -> [W008] warning; treat
-        # them as no similarity match rather than spamming the log
         inv_title = r["title"].lower()
-        similarity = (
-            nlp(cited_title).similarity(nlp(inv_title))
-            if inv_title.strip() and nlp(inv_title).vector.sum()
-            else 0.0
-        )
-        overlap = sum(1 for w in words if w in blob) / max(len(words), 1)
+        similarity = 0.0
+        if cited_doc is not None and inv_title.strip():
+            inv_doc = nlp_model(inv_title)
+            if inv_doc.has_vector:
+                similarity = cited_doc.similarity(inv_doc)
+
+        overlap = sum(1 for w in words if w in blob_words) / max(len(words), 1)
         # filenames often truncate author lists to "X et al", so a second
         # surname only counts as corroboration, never as a requirement
         corroboration = sum(1 for s in sur if s in blob) >= 2
@@ -190,7 +201,8 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=SOA)
     args = ap.parse_args()
 
-    rows = list(csv.DictReader(args.inventory.open(encoding="utf-8")))
+    with args.inventory.open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
     out = []
     for ref, parsed in entries(args.refs.read_text(encoding="utf-8")).items():
         hit, method = match(parsed, rows)
@@ -207,10 +219,14 @@ def main() -> None:
         )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    with args.out.open("w", newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=list(out[0]))
+    tmp_out = args.out.with_suffix(".tmp")
+    with tmp_out.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=FIELDNAMES)
         w.writeheader()
         w.writerows(out)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp_out, args.out)
     exact = sum(r["method"].startswith("exact") for r in out)
     weak = sum(r["method"] == "weak" for r in out)
     absent = sum(r["local"] == "no" for r in out)

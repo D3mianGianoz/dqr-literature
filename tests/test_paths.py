@@ -295,6 +295,45 @@ class TestSpacyRelatedWork(unittest.TestCase):
         # fallback summary should contain something about anomaly detection
         self.assertIn("anomaly", body.lower())
 
+    def test_notes_readme_links_resolve(self):
+        import re
+        readme = REPO / "notes/README.md"
+        self.assertTrue(readme.exists())
+        content = readme.read_text(encoding="utf-8")
+        links = re.findall(r"\(([^)]+\.md)\)", content)
+        self.assertGreater(len(links), 0)
+        for link in links:
+            target = (REPO / "notes" / link).resolve()
+            self.assertTrue(target.exists(), f"Broken link in notes/README.md: {link}")
+
+    def test_match_refs_empty_bibliography_creates_valid_csv(self):
+        tmp = Path(tempfile.mkdtemp())
+        empty_refs = tmp / "empty_refs.txt"
+        empty_refs.write_text("", encoding="utf-8")
+        out_csv = tmp / "out.csv"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "related_work.match_refs",
+                "--refs",
+                str(empty_refs),
+                "--out",
+                str(out_csv),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(proc.returncode, 0, f"match_refs failed: {proc.stderr}")
+        self.assertTrue(out_csv.exists())
+        with out_csv.open(encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            self.assertEqual(
+                reader.fieldnames,
+                ["ref", "year", "surnames", "local", "method", "local_path", "citation"],
+            )
+            self.assertEqual(list(reader), [])
+
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromModule(sys.modules[__name__])
