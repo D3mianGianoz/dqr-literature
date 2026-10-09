@@ -168,7 +168,7 @@ def _zotero_items() -> list[dict]:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--root", type=Path, help="literature root (defaults to $LIT)")
+    ap.add_argument("--root", type=Path, help="literature root (defaults to [tool.dqr-literature].lit_root in pyproject.toml)")
     ap.add_argument("--out", type=Path, help="CSV output path")
     ap.add_argument(
         "--zotero-local",
@@ -211,11 +211,13 @@ def main() -> None:
     apply_overrides(rows, overrides)
 
     out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w", newline="", encoding="utf-8") as fh:
+    tmp = out.with_name(out.name + ".tmp")
+    with tmp.open("w", newline="", encoding="utf-8") as fh:
         fields = ["year", "author", "title", "path", "zotero_key", "abstract"]
         writer = csv.DictWriter(fh, fieldnames=fields)
         writer.writeheader()
         writer.writerows(rows)
+    tmp.replace(out)
 
     message = f"{len(rows)} papers -> {out}"
     if args.zotero_local:

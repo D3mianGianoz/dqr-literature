@@ -143,9 +143,12 @@ def show(
     pdf = Path(row["path"])
     if not pdf.is_absolute():
         pdf = root / pdf
-    text = subprocess.run(
-        ["pdftotext", str(pdf), "-"], capture_output=True, text=True, check=True
-    ).stdout
+    try:
+        text = subprocess.run(
+            ["pdftotext", str(pdf), "-"], capture_output=True, text=True, check=True
+        ).stdout
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise SystemExit("pdftotext must be installed and available on PATH.") from exc
     flat = re.sub(r"\s+", " ", text)
     doc = nlp(flat)
     sentences = [s.text.strip() for s in doc.sents]
@@ -272,7 +275,7 @@ def main() -> None:
         c.add_argument("--ref")
         if cmd == "show":
             c.add_argument("--chars", type=int, default=1400)
-            c.add_argument("--root", type=Path, help="literature root (defaults to $LIT)")
+            c.add_argument("--root", type=Path, help="literature root (defaults to [tool.dqr-literature].lit_root in pyproject.toml)")
     sub.add_parser("todo")
 
     rec = sub.add_parser("recommend", help="recommend papers by semantic similarity")

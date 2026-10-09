@@ -13,7 +13,7 @@ from related_work.config import corpus_root
 
 
 class TestZoteroInventory(unittest.TestCase):
-    def test_cli_defaults_to_lit_and_repository_inventory_path(self):
+    def test_cli_defaults_to_pyproject_and_repository_inventory_path(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / "Literature"
             root.mkdir()
