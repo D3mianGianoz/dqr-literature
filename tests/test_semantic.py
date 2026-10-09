@@ -1,3 +1,5 @@
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -74,10 +76,6 @@ class TestSemanticRanking(unittest.TestCase):
         )
         self.assertEqual(results1[0]["key"], results2[0]["key"])
         self.assertEqual(results1[0]["key"], "cooking")
-
-
-import subprocess
-import sys
 
 
 class TestPapersCLI(unittest.TestCase):

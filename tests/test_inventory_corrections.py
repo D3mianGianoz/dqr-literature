@@ -1,5 +1,9 @@
 """Regression checks for the corrections/overrides mechanism."""
-import csv, json, sys, contextlib
+import contextlib
+import csv
+import io
+import json
+import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -18,7 +22,10 @@ class TestCorrectionsGuard(unittest.TestCase):
     ):
         old_argv = sys.argv
         old_corrections = inventory.CORRECTIONS
+        old_inventory = inventory.INVENTORY
+        old_corpus_root = inventory.corpus_root
         old_configured_root = inventory._pyproject_lit_root
+        old_zotero_items = inventory._zotero_items
         sys.argv = [old_argv[0]] + (["--zotero-local"] if zotero_local else [])
         inventory.CORRECTIONS = corr
         inventory.INVENTORY = out
@@ -26,8 +33,8 @@ class TestCorrectionsGuard(unittest.TestCase):
         inventory._pyproject_lit_root = lambda: configured_root or lit
         inventory._zotero_items = lambda: list(zotero_items)
         try:
-            with contextlib.redirect_stdout(open("/dev/null", "w")), \
-                 contextlib.redirect_stderr(open("/dev/null", "w")):
+            with contextlib.redirect_stdout(io.StringIO()), \
+                 contextlib.redirect_stderr(io.StringIO()):
                 try:
                     inventory.main()
                     return None
@@ -36,7 +43,10 @@ class TestCorrectionsGuard(unittest.TestCase):
         finally:
             sys.argv = old_argv
             inventory.CORRECTIONS = old_corrections
+            inventory.INVENTORY = old_inventory
+            inventory.corpus_root = old_corpus_root
             inventory._pyproject_lit_root = old_configured_root
+            inventory._zotero_items = old_zotero_items
 
     def test_orphaned_corrections_raise(self):
         """Corrections referencing missing paths are caught."""
