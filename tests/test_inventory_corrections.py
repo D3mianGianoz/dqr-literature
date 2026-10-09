@@ -12,13 +12,18 @@ _DATA = Path(__file__).parent.parent / "data"
 class TestCorrectionsGuard(unittest.TestCase):
     """The inventory guard must not break mock inventories and must detect drift."""
 
-    def _run(self, lit, corr, out, zotero_items=(), zotero_local=False):
+    def _run(
+        self, lit, corr, out, zotero_items=(), zotero_local=False,
+        configured_root=None,
+    ):
         old_argv = sys.argv
         old_corrections = inventory.CORRECTIONS
+        old_configured_root = inventory._pyproject_lit_root
         sys.argv = [old_argv[0]] + (["--zotero-local"] if zotero_local else [])
         inventory.CORRECTIONS = corr
         inventory.INVENTORY = out
         inventory.corpus_root = lambda root=None: lit
+        inventory._pyproject_lit_root = lambda: configured_root or lit
         inventory._zotero_items = lambda: list(zotero_items)
         try:
             with contextlib.redirect_stdout(open("/dev/null", "w")), \
@@ -31,6 +36,7 @@ class TestCorrectionsGuard(unittest.TestCase):
         finally:
             sys.argv = old_argv
             inventory.CORRECTIONS = old_corrections
+            inventory._pyproject_lit_root = old_configured_root
 
     def test_orphaned_corrections_raise(self):
         """Corrections referencing missing paths are caught."""
@@ -50,6 +56,48 @@ class TestCorrectionsGuard(unittest.TestCase):
             msg = self._run(lit, corr, tmp / "out.csv")
             self.assertIsNotNone(msg)
             self.assertIn("references 1 path(s) no longer in the inventory", msg)
+
+    def test_entirely_orphaned_corrections_raise(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            lit = tmp / "Literature"
+            lit.mkdir()
+            (lit / "2020 Current Paper.pdf").touch()
+            corr = tmp / "corrections.json"
+            corr.write_text(
+                json.dumps({"old/removed.pdf": {"year": "2019"}}),
+                encoding="utf-8",
+            )
+            msg = self._run(lit, corr, tmp / "out.csv")
+            self.assertIsNotNone(msg)
+            self.assertIn("references 1 path(s) no longer in the inventory", msg)
+
+    def test_alternate_root_does_not_validate_configured_corrections(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            lit = tmp / "alternate"
+            lit.mkdir()
+            (lit / "2020 Current Paper.pdf").touch()
+            corr = tmp / "corrections.json"
+            corr.write_text(
+                json.dumps({"old/removed.pdf": {"year": "2019"}}),
+                encoding="utf-8",
+            )
+            msg = self._run(
+                lit, corr, tmp / "out.csv", configured_root=tmp / "configured"
+            )
+            self.assertIsNone(msg)
+
+    def test_malformed_corrections_fail(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            lit = tmp / "Literature"
+            lit.mkdir()
+            corr = tmp / "corrections.json"
+            corr.write_text("{", encoding="utf-8")
+            msg = self._run(lit, corr, tmp / "out.csv")
+            self.assertIsNotNone(msg)
+            self.assertIn("Could not load corrections file", msg)
 
     def test_coverage_after_enrich_raises(self):
         """A row missing both zotero metadata and a correction is caught."""

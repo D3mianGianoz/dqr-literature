@@ -188,6 +188,7 @@ class ZoteroClient:
         item_key: str | None = None,
         path: str | Path | None = None,
         title: str | None = None,
+        items: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, str]]:
         """Return annotations for an item, resolving key if needed.
 
@@ -196,12 +197,11 @@ class ZoteroClient:
         """
         if item_key:
             resolved = item_key
-            items = None  # no need to fetch items for direct key lookup
         else:
-            items = self.get_all_library_items()
+            if items is None:
+                items = self.get_all_library_items()
             resolved = self.resolve_item_key(path=path, title=title, items=items)
         if not resolved:
             return []
         all_anns = self.get_annotations_by_top_item(items=items)
         return all_anns.get(resolved, [])
-

@@ -15,7 +15,12 @@ import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from related_work.config import CORRECTIONS, INVENTORY, corpus_root
+from related_work.config import (
+    CORRECTIONS,
+    INVENTORY,
+    _pyproject_lit_root,
+    corpus_root,
+)
 
 YEAR = re.compile(r"\b(19|20)\d{2}\b")
 
@@ -53,8 +58,7 @@ def load_overrides() -> dict[str, dict[str, str]]:
         with CORRECTIONS.open("r", encoding="utf-8") as fh:
             return json.load(fh)
     except (json.JSONDecodeError, IOError) as exc:
-        print(f"Warning: could not load overrides: {exc}")
-        return {}
+        raise SystemExit(f"Could not load corrections file: {exc}") from exc
 
 
 def apply_overrides(rows: list[dict[str, str]], overrides: dict[str, dict[str, str]]) -> None:
@@ -177,6 +181,11 @@ def main() -> None:
     )
     args = ap.parse_args()
     root = corpus_root(args.root)
+    configured_root = _pyproject_lit_root()
+    is_configured_root = (
+        configured_root is not None
+        and root.resolve() == configured_root.resolve()
+    )
     out = args.out or INVENTORY
 
     overrides = load_overrides()
@@ -210,9 +219,8 @@ def main() -> None:
 
     apply_overrides(rows, overrides)
 
-    # Guard: meaningful only when this inventory is built from the same
-    # corpus as the corrections file (at least one correction path present).
-    if overrides and any(row["path"] in overrides for row in rows):
+    # Corrections belong to the configured corpus, not an explicitly alternate root.
+    if overrides and is_configured_root:
         # Every correction must still exist in the inventory (no stale entries).
         orphaned = sorted(
             p for p in overrides if p not in {r["path"] for r in rows}

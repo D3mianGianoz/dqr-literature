@@ -53,7 +53,7 @@ class TestScaffold(unittest.TestCase):
              patch.object(p, "ZoteroClient") as mock_client_class:
             mock_client = mock_client_class.return_value
             mock_client.is_available.return_value = False
-            p.scaffold(query="crane", ref=None, force=True)
+            p.scaffold(query="crane", ref=None, force=True, root=Path("."))
         out = notes / "smith-2023-overhead-crane-fault-detection.md"
         self.assertTrue(out.exists())
         content = out.read_text()
@@ -101,7 +101,7 @@ class TestScaffold(unittest.TestCase):
             mock_client = mock_client_class.return_value
             mock_client.is_available.return_value = True
             mock_client.get_annotations_for_item.return_value = annotations
-            p.scaffold(query="crane", ref=None, force=True)
+            p.scaffold(query="crane", ref=None, force=True, root=Path("."))
         out = notes / "smith-2023-overhead-crane-fault-detection.md"
         self.assertTrue(out.exists())
         content = out.read_text()
@@ -123,7 +123,7 @@ class TestScaffold(unittest.TestCase):
 
         notes = Path(tempfile.mkdtemp()) / "notes" / "papers"
         notes.mkdir(parents=True, exist_ok=True)
-        out = notes / "test-author-2020-x.md"
+        out = notes / "author-2020-x.md"
         out.write_text("old content\n", encoding="utf-8")
         row = {
             "path": "test.pdf",
@@ -134,11 +134,66 @@ class TestScaffold(unittest.TestCase):
         }
         with patch.object(p, "NOTES", notes), \
              patch.object(p, "find", return_value=(row, "inv")), \
-             patch.object(p, "_extract_paper_body", return_value="Summary."), \
-             patch.object(p, "ZoteroClient") as mock_client_class:
-            mock_client_class.return_value.is_available.return_value = False
+             patch.object(p, "_extract_paper_body") as extract, \
+             patch.object(p, "corpus_root") as corpus_root:
             p.scaffold(query="test", ref=None)
+        extract.assert_not_called()
+        corpus_root.assert_not_called()
         self.assertEqual(out.read_text(), "old content\n")
+
+    def test_scaffold_missing_zotero_key_shares_snapshot(self):
+        from unittest.mock import patch
+        from related_work import papers as p
+
+        notes = Path(tempfile.mkdtemp()) / "notes" / "papers"
+        row = {
+            "path": "test.pdf",
+            "year": "2020",
+            "author": "Test Author",
+            "title": "X",
+        }
+        snapshot = [{"key": "K1", "data": {"itemType": "journalArticle", "title": "X"}}]
+        with patch.object(p, "NOTES", notes), \
+             patch.object(p, "find", return_value=(row, "inv")), \
+             patch.object(p, "_extract_paper_body", return_value="Summary."), \
+             patch.object(p, "corpus_root", return_value=Path(".")), \
+             patch.object(p, "ZoteroClient") as mock_client_class:
+            mock_client = mock_client_class.return_value
+            mock_client.is_available.return_value = True
+            mock_client.get_all_library_items.return_value = snapshot
+            mock_client.resolve_item_key.return_value = "K1"
+            p.scaffold(query="test", ref=None, force=True)
+        mock_client.resolve_item_key.assert_called_once_with(
+            path="test.pdf", title="X", items=snapshot
+        )
+        mock_client.get_annotations_for_item.assert_called_once_with(
+            item_key="K1", items=snapshot
+        )
+        mock_client.get_all_library_items.assert_called_once_with()
+
+    def test_annotations_missing_zotero_key_shares_snapshot(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        from unittest.mock import patch
+        from related_work import papers as p
+
+        row = {"path": "test.pdf", "title": "X"}
+        snapshot = [{"key": "K1", "data": {"itemType": "journalArticle", "title": "X"}}]
+        with patch.object(p, "find", return_value=(row, "inv")), \
+             patch("related_work.zotero.ZoteroClient") as mock_client_class, \
+             redirect_stdout(StringIO()):
+            mock_client = mock_client_class.return_value
+            mock_client.is_available.return_value = True
+            mock_client.get_all_library_items.return_value = snapshot
+            mock_client.resolve_item_key.return_value = "K1"
+            p.annotations(query="X", ref=None)
+        mock_client.resolve_item_key.assert_called_once_with(
+            path="test.pdf", title="X", items=snapshot
+        )
+        mock_client.get_annotations_for_item.assert_called_once_with(
+            item_key="K1", items=snapshot
+        )
+        mock_client.get_all_library_items.assert_called_once_with()
 
 
 class TestSlugGeneration(unittest.TestCase):

@@ -310,11 +310,16 @@ def annotations(query: str | None, ref: str | None) -> None:
     if not client.is_available():
         raise SystemExit("Zotero local API is not running. Start Zotero to fetch annotations.")
 
-    # Resolve key once; pass it directly so get_annotations_for_item skips the fetch
+    # Share one library snapshot between key resolution and annotation lookup.
     if not key:
-        key = client.resolve_item_key(path=row.get("path"), title=row.get("title"))
+        items = client.get_all_library_items()
+        key = client.resolve_item_key(
+            path=row.get("path"), title=row.get("title"), items=items
+        )
+        anns = client.get_annotations_for_item(item_key=key, items=items)
+    else:
+        anns = client.get_annotations_for_item(item_key=key)
     resolved_key = key or "unmatched"
-    anns = client.get_annotations_for_item(item_key=key)
     print(f"### Zotero annotations: {row.get('title') or stem} [{resolved_key}]\n")
     if not anns:
         print("No annotations found in Zotero for this paper.")
@@ -340,12 +345,6 @@ def scaffold(query: str | None, ref: str | None, force: bool = False, root: Path
     if the library is running. Skips existing notes unless --force is given.
     """
     row, source = find(query, ref)
-    pdf = Path(row["path"])
-    if not pdf.is_absolute():
-        pdf = corpus_root(root) / pdf
-    body = _extract_paper_body(pdf)
-    body = body.replace("\n", " ")[:5000]
-
     slug = _make_slug(
         row.get("author") or "",
         row.get("year") or "",
@@ -356,12 +355,23 @@ def scaffold(query: str | None, ref: str | None, force: bool = False, root: Path
         print(f"already exists: {out}\n(use --force to overwrite)")
         return
 
+    pdf = Path(row["path"])
+    if not pdf.is_absolute():
+        pdf = corpus_root(root) / pdf
+    body = _extract_paper_body(pdf)
+    body = body.replace("\n", " ")[:5000]
+
     client = ZoteroClient()
     if client.is_available():
         key = row.get("zotero_key")
         if not key:
-            key = client.resolve_item_key(path=row.get("path"), title=row.get("title"))
-        anns = client.get_annotations_for_item(item_key=key)
+            items = client.get_all_library_items()
+            key = client.resolve_item_key(
+                path=row.get("path"), title=row.get("title"), items=items
+            )
+            anns = client.get_annotations_for_item(item_key=key, items=items)
+        else:
+            anns = client.get_annotations_for_item(item_key=key)
     else:
         anns = None
 
@@ -433,4 +443,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

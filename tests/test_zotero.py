@@ -113,6 +113,20 @@ class TestZoteroClient(unittest.TestCase):
         mock_items.assert_called_once()
         self.assertEqual(result, [])
 
+    @patch.object(ZoteroClient, "get_all_library_items")
+    def test_get_annotations_for_item_reuses_supplied_snapshot(self, mock_items):
+        snapshot = [
+            {"key": "TOP1", "data": {"itemType": "journalArticle", "title": "Crane Study"}},
+            {"key": "ATT1", "data": {"itemType": "attachment", "parentItem": "TOP1", "filename": "crane.pdf"}},
+        ]
+        mock_items.return_value = snapshot
+        client = ZoteroClient()
+        items = client.get_all_library_items()
+        key = client.resolve_item_key(path="crane.pdf", items=items)
+
+        self.assertEqual(client.get_annotations_for_item(item_key=key, items=items), [])
+        mock_items.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

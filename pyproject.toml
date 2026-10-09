@@ -2,12 +2,12 @@
 name = "dqr-literature"
 version = "0.1.0"
 requires-python = ">=3.10"
-dependencies = ["spacy"]
+dependencies = [
+    "spacy",
+    "tomli>=2; python_version < '3.11'",
+]
 
 [project.optional-dependencies]
 zotero = [
     "pyzotero>=1.15.2",
 ]
-
-[tool.dqr-literature]
-lit_root = "/Users/dgian/Zensor Dropbox/Damiano Gianotti/Zensor Internal Projects Folder/99956_DQR_Data_Quality_Research/Literature"
