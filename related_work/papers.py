@@ -43,8 +43,6 @@ def _load(path: Path) -> list[dict[str, str]]:
 
 
 def _norm_text(s: str) -> str:
-    import unicodedata
-
     return unicodedata.normalize("NFKC", s).casefold()
 
 

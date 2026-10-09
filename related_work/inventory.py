@@ -210,6 +210,35 @@ def main() -> None:
 
     apply_overrides(rows, overrides)
 
+    # Guard: meaningful only when this inventory is built from the same
+    # corpus as the corrections file (at least one correction path present).
+    if overrides and any(row["path"] in overrides for row in rows):
+        # Every correction must still exist in the inventory (no stale entries).
+        orphaned = sorted(
+            p for p in overrides if p not in {r["path"] for r in rows}
+        )
+        if orphaned:
+            raise SystemExit(
+                f"corrections file references {len(orphaned)} path(s) no longer "
+                f"in the inventory: {orphaned[:10]}"
+            )
+
+        # After a zotero-local enrich, corrections must cover exactly the rows
+        # missing zotero metadata — nothing missed, nothing stale.
+        if args.zotero_local:
+            non_zotero = {r["path"] for r in rows if not r.get("zotero_key")}
+            missing = sorted(non_zotero - set(overrides))
+            extra = sorted(set(overrides) - non_zotero)
+            if missing:
+                raise SystemExit(
+                    f"{len(missing)} rows lack zotero metadata and a correction: {missing[:10]}"
+                )
+            if extra:
+                raise SystemExit(
+                    f"{len(extra)} corrections are no longer needed (Zotero matched): "
+                    f"{extra[:10]}"
+                )
+
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_name(out.name + ".tmp")
     with tmp.open("w", newline="", encoding="utf-8") as fh:
