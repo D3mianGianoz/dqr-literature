@@ -56,9 +56,16 @@ def load_overrides() -> dict[str, dict[str, str]]:
         return {}
     try:
         with CORRECTIONS.open("r", encoding="utf-8") as fh:
-            return json.load(fh)
+            overrides = json.load(fh)
     except (json.JSONDecodeError, IOError) as exc:
         raise SystemExit(f"Could not load corrections file: {exc}") from exc
+    if not isinstance(overrides, dict) or any(
+        not isinstance(value, dict) for value in overrides.values()
+    ):
+        raise SystemExit(
+            "Corrections file must be a JSON object mapping paths to override objects."
+        )
+    return overrides
 
 
 def apply_overrides(rows: list[dict[str, str]], overrides: dict[str, dict[str, str]]) -> None:

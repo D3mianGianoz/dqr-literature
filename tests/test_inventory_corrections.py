@@ -99,6 +99,17 @@ class TestCorrectionsGuard(unittest.TestCase):
             self.assertIsNotNone(msg)
             self.assertIn("Could not load corrections file", msg)
 
+    def test_corrections_must_map_paths_to_objects(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            lit = tmp / "Literature"
+            lit.mkdir()
+            corr = tmp / "corrections.json"
+            corr.write_text("[]", encoding="utf-8")
+            msg = self._run(lit, corr, tmp / "out.csv")
+            self.assertIsNotNone(msg)
+            self.assertIn("mapping paths to override objects", msg)
+
     def test_coverage_after_enrich_raises(self):
         """A row missing both zotero metadata and a correction is caught."""
         with TemporaryDirectory() as tmp:
