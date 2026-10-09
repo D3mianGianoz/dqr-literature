@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from related_work import semantic
+from related_work.papers import _make_slug
 
 
 class TestScaffold(unittest.TestCase):
@@ -138,6 +139,52 @@ class TestScaffold(unittest.TestCase):
             mock_client_class.return_value.is_available.return_value = False
             p.scaffold(query="test", ref=None)
         self.assertEqual(out.read_text(), "old content\n")
+
+
+class TestSlugGeneration(unittest.TestCase):
+    """The note filename slug must match existing notes and stay under the cap."""
+
+    def test_empty_inputs(self):
+        self.assertEqual(_make_slug("", "2023", "foo"), "unknown-2023-foo")
+        self.assertEqual(_make_slug("", "", "foo"), "unknown-foo")
+        self.assertEqual(_make_slug("", "", ""), "unknown-untitled")
+
+    def test_surnames_dropped(self):
+        self.assertEqual(_make_slug("Alice Smith", "2023", "X"), "smith-2023-x")
+        self.assertEqual(
+            _make_slug("Corinna Cichy and Stefan Rass", "2019", "An Overview of Data Quality Frameworks"),
+            "cichy-rass-2019-an-overview-of-data-quality-frameworks",
+        )
+
+    def test_et_al_after_three(self):
+        self.assertEqual(_make_slug("a and b and c", "2023", "X"), "a-b-c-2023-x")
+        self.assertEqual(_make_slug("a and b and c and d", "2023", "X"), "a-b-et-al-2023-x")
+
+    def test_comma_author(self):
+        self.assertEqual(_make_slug("Ni, et al.", "2009", "Sensor network data fault types (ACM TOSN 5(3))"),
+                         "ni-et-al-2009-sensor-network-data-fault-types-acm-tosn-5-3")
+
+    def test_subtitle_drop(self):
+        self.assertEqual(
+            _make_slug("donne and davis", "2026", "robust anomaly detection under contaminated data a comprehensive eval"),
+            "donne-davis-2026-robust-anomaly-detection-under-contaminated-data",
+        )
+        # subtitle kept when it is a large part of a short title
+        self.assertEqual(_make_slug("x", "2023", "X a comprehensive evaluation"), "x-2023-x-a-comprehensive-evaluation")
+
+    def test_non_ascii(self):
+        self.assertEqual(_make_slug("Donné and Davis", "2026", "X"), "donne-davis-2026-x")
+        self.assertEqual(_make_slug("Sondre Sørbø and Massimiliano Ruocco", "2024", "X"), "srb-ruocco-2024-x")
+
+    def test_length_cap(self):
+        # Cap lands on a word boundary, not in the middle of a word
+        slug = _make_slug(
+            "Christoph Scholl and Maximilian Spiegler and Klaus Ludwig and Bjoern M. Eskofier and Andreas Tobola and Dario Zanca",
+            "2023", "An Integrated Framework for Data Quality Fusion in Embedded Sensor Systems",
+        )
+        self.assertLessEqual(len(slug), 90)
+        self.assertFalse(slug.endswith("-"))
+        self.assertNotIn("embedded-sen", slug)  # not cut mid-word
 
 
 if __name__ == "__main__":

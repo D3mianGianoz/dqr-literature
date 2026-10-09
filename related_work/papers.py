@@ -205,7 +205,8 @@ def _make_slug(author: str, year: str, title: str, cap: int = 90) -> str:
     elif "," in auth:
         author_slug = _slugify(" ".join(p.strip() for p in auth.split(",")))
     else:
-        author_slug = _slugify(auth.rsplit(None, 1)[-1])
+        author_slug = _slugify(auth.rsplit(None, 1)[-1]) if auth.strip() else "unknown"
+    author_slug = author_slug or "unknown"
     title_slug = _slugify(_strip_subtitle(title or "untitled"))
     slug = author_slug
     if year:
