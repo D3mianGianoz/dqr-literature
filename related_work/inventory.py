@@ -9,12 +9,13 @@ Usage:
 
 import argparse
 import csv
+import json
 import re
 import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from related_work.config import INVENTORY, corpus_root
+from related_work.config import CORRECTIONS, INVENTORY, corpus_root
 
 YEAR = re.compile(r"\b(19|20)\d{2}\b")
 
@@ -42,6 +43,26 @@ def _title_key(title: str) -> str:
     return " ".join(
         "".join(char if char.isalnum() else " " for char in normalized).split()
     )
+
+
+def load_overrides() -> dict[str, dict[str, str]]:
+    """Load metadata overrides from the corrections file."""
+    if not CORRECTIONS.exists():
+        return {}
+    try:
+        with CORRECTIONS.open("r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (json.JSONDecodeError, IOError) as exc:
+        print(f"Warning: could not load overrides: {exc}")
+        return {}
+
+
+def apply_overrides(rows: list[dict[str, str]], overrides: dict[str, dict[str, str]]) -> None:
+    """Apply overrides to rows based on the paper path."""
+    for row in rows:
+        if path := row.get("path"):
+            if override := overrides.get(path):
+                row.update(override)
 
 
 def enrich(
@@ -158,6 +179,8 @@ def main() -> None:
     root = corpus_root(args.root)
     out = args.out or INVENTORY
 
+    overrides = load_overrides()
+
     rows = []
     for paper in sorted(root.rglob("*.pdf")):
         year, author, title = parse(paper)
@@ -184,6 +207,8 @@ def main() -> None:
                         for field in ("year", "author", "title", "zotero_key", "abstract")
                     }
                 )
+
+    apply_overrides(rows, overrides)
 
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="", encoding="utf-8") as fh:

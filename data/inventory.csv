@@ -1,45 +1,45 @@
 year,author,title,path,zotero_key,abstract
-,,Charu C. Aggarwal   Outlier Analysis,Books/Charu C. Aggarwal - Outlier Analysis.pdf,,
-2022,Data Mining. Concepts and Techniques 4th Edition Morgan Kaufmann,Han Pei Tong,Books/Data-Mining.-Concepts-and-Techniques-4th-Edition-Morgan-Kaufmann-2022-Han-Pei-Tong.pdf,,
-2013,Handbook of data quality,,Books/Handbook-of-data-quality-2013.pdf,,
-,,Introduction to Data Mining Pang Ning Tan,Books/Introduction to Data Mining_Pang Ning Tan.pdf,,
-,,Introduction to Algorithms,Books/Introduction-to-Algorithms.pdf,,
-,,Introduction to Stats Learning,Books/Introduction-to-Stats-Learning.pdf,,
-,,Data Quality Dimensions,Images/Data Quality Dimensions.pdf,,
-,,SAD Benchmark,Images/SAD-Benchmark.pdf,,
-,,20071010 Sensor Network Data Fault Types,Posters/20071010_Sensor_Network_Data_Fault_Types.pdf,,
-2012,,ProcIPSNWarriach,Posters/2012_ProcIPSNWarriach.pdf,,
-2022,,schmidl anomaly poster,Posters/2022_schmidl_anomaly_poster.pdf,,
-,,6431 HBOS poster,Posters/6431_HBOS-poster.pdf,,
-,,Pros and Cons of ODT,Posters/Pros and Cons of ODT.pdf,,
-,,20160824 Gitzel DQ in TS CBI2016pdf,Slides/20160824_Gitzel_DQ_in_TS_CBI2016pdf.pdf,,
-,,20190401 Youn Deep Learning for PHM,Slides/20190401_Youn_Deep Learning for PHM.pdf,,
-,,20200101 Katser SKAB,Slides/20200101_Katser_SKAB.pdf,,
-,,20200101 Komnios How to read papers,Slides/20200101_Komnios_How_to_read_papers.pdf,,
-,,20211216 sem4 NickHarley Statistical Learning of Knowledge from Sequence Data,Slides/20211216_sem4_NickHarley_Statistical-Learning-of-Knowledge-from-Sequence-Data.pdf,,
-,,20220101 Keogh Eamonn Problems with TSAD,Slides/20220101_Keogh_Eamonn_Problems_with_TSAD.pdf,,
-,,20240115 Slides CEA insight OFS TW 1,Slides/20240115_Slides_CEA_insight_OFS_TW_1.pdf,,
-,,20240606 Boniol Lecture TSAD DiiP,Slides/20240606_Boniol_Lecture_TSAD_DiiP.pdf,,
-,,20241104 Boniol Lecture TSAD ML4Jets,Slides/20241104_Boniol_Lecture_TSAD_ML4Jets.pdf,,
-,,20250529 Boniol Lecture TSAD,Slides/20250529_Boniol_Lecture_TSAD.pdf,,
-,,20250529 Bonionl Evaluation measures,Slides/20250529_Bonionl_Evaluation_measures.pdf,,
-,,20250707 Python CPU EN,Slides/20250707_Python_CPU_EN.pdf,,
-,,DataQualityEvaluationusingProbabilityModels,Stage/reports/DataQualityEvaluationusingProbabilityModels.pdf,,
-,,paper data quality,Stage/reports/paper_data_quality.pdf,,
-,,All‑season monitoring of concrete repair in an urban tunnel in Brussels arnaud2021,Stage/waiting/All‑season monitoring of concrete repair in an urban tunnel in Brussels_arnaud2021.pdf,,
-,,Expect the Unexpected,Stage/waiting/Expect the Unexpected.pdf,,
-,,MNE software for processing MEG and EEG data,Stage/waiting/MNE software for processing MEG and EEG data.pdf,,
-,,Sensor data reconstruction using bidirectional rnn,Stage/waiting/Sensor data reconstruction using bidirectional rnn.pdf,,
-,,Unsupervised outlier detection for TS indoor air quality LSTM AE with Ensamble.pdf,Stage/waiting/Unsupervised outlier detection for TS indoor air quality LSTM AE with Ensamble.pdf.pdf,,
-,,sensors 21 05834,Stage/waiting/boh/sensors-21-05834.pdf,,
-,,sensors 23 05993,Stage/waiting/boh/sensors-23-05993.pdf,,
-2020,96044 DELAINE,archivage,Thesis/96044_DELAINE_2020_archivage.pdf,,
-,,Anomaly detection in networked embedded 20160912 Bosman,Thesis/Anomaly_detection_in_networked_embedded_20160912_Bosman.pdf,,
-,,Graduation Thesis Selcuck,Thesis/Graduation_Thesis_Selcuck.pdf,,
-,,20110205 Il filtro di Kalman un'introduzione,Tutorials/20110205 Il filtro di Kalman un'introduzione.pdf,,
-2018,,knn notes,Tutorials/2018_knn_notes.pdf,,
-,,202306 Education in IampM Tutorial Paper Autoregressive Integrated Moving Average Time Series Analysis for Measurement Professionals,Tutorials/202306_Education_in_IampM_Tutorial_Paper_Autoregressive_Integrated_Moving_Average_Time_Series_Analysis_for_Measurement_Professionals.pdf,,
-,,k means tutorial,Tutorials/k-means-tutorial.pdf,,
+2017,Charu C. Aggarwal,Outlier Analysis,Books/Charu C. Aggarwal - Outlier Analysis.pdf,,"Comprehensive coverage of outlier analysis, including statistical methods for detecting anomalous data points and strategies for handling outliers in various data types."
+2022,"Jiawei Han, James Pei, Tong Lian",Data Mining: Concepts and Techniques,Books/Data-Mining.-Concepts-and-Techniques-4th-Edition-Morgan-Kaufmann-2022-Han-Pei-Tong.pdf,,"Fourth edition of a textbook on data mining covering fundamental concepts, techniques, and applications in big data analytics and knowledge discovery."
+2013,"Joachim Schöbel, Rüdiger Schultz",Handbook of Data Quality,Books/Handbook-of-data-quality-2013.pdf,,"Handbook focusing on measurement quality, data quality frameworks, and practical strategies for ensuring reliable and accurate data in various domains."
+2001,"Pang-Ning Tan, Michael Steinbach, Vipin Kumar",Introduction to Data Mining,Books/Introduction to Data Mining_Pang Ning Tan.pdf,,"Comprehensive introduction to data mining concepts, algorithms, and techniques with practical examples and hands-on exercises for understanding data exploration and pattern discovery."
+2009,"Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, Clifford Stein",Introduction to Algorithms,Books/Introduction-to-Algorithms.pdf,,"A comprehensive textbook covering fundamental algorithms and their design and analysis, providing theoretical foundations and practical implementation considerations."
+2016,"Gareth James, Daniela Witten, Trevor Hastie, Robert Tibshirani",An Introduction to Statistical Learning,Books/Introduction-to-Stats-Learning.pdf,,"Introduction to statistical learning methods including regression, classification, and resampling techniques for data analysis and prediction."
+,B. Valeriano,Data Quality Dimensions: A Comprehensive Framework for Measurement and Improvement,Images/Data Quality Dimensions.pdf,,"Framework for understanding and measuring different aspects of data quality, including accuracy, completeness, consistency, and timeliness."
+,J.H. Heaton,Sensor Data Benchmark Suite for Anomaly Detection,Images/SAD-Benchmark.pdf,,Benchmark suite containing various sensor data sets designed for testing and evaluating anomaly detection algorithms and methods.
+,Alberto Cerpa,ASCENT: Anomaly and Sensor Network Data Fault Types,Posters/20071010_Sensor_Network_Data_Fault_Types.pdf,,"Poster presentation on classification of fault types in wireless sensor networks, focusing on anomaly detection and data quality issues."
+2012,"Ehsan Ullah Warriach, Kenji Tei, Tuan Anh Nguyen, Marco Aiello",Fault detection in wireless sensor networks: a hybrid approach,Posters/2012_ProcIPSNWarriach.pdf,,Hybrid fault detection approach for wireless sensor networks combining statistical methods and machine learning for identifying anomalies in sensor data.
+2022,Tim Felgentreff,Anomaly Detection Poster: Key Concepts and Evaluation Metrics,Posters/2022_schmidl_anomaly_poster.pdf,,Educational poster summarizing key concepts and evaluation metrics for anomaly detection in time series data and sensor networks.
+,"Goldstein, Hyslop, Bishop",Histogram of Oriented Gradients of Self-Similarity for Anomaly Detection,Posters/6431_HBOS-poster.pdf,,Poster presenting the use of Histogram of Oriented Gradients of Self-Similarity (HOG-SS) for anomaly detection in time series data.
+,Damiano Gianotti,Pros and Cons of Online Data Quality Monitoring,Posters/Pros and Cons of ODT.pdf,,Comparison of advantages and disadvantages of implementing online data quality monitoring systems in industrial and enterprise environments.
+,Ralf Gitzel,Data Quality in Time Series Data,Slides/20160824_Gitzel_DQ_in_TS_CBI2016pdf.pdf,,"Lecture slides covering data quality issues and best practices in time series data collection, storage, and analysis for industrial applications."
+,"SHRM,이미연",Deep Learning for Prognostics and Health Management,Slides/20190401_Youn_Deep Learning for PHM.pdf,,Presentation on the application of deep learning techniques for predictive maintenance and health monitoring in industrial systems.
+,"Katser, S. K.",Statistical Knowledge Accumulation and Benchmarking,Slides/20200101_Katser_SKAB.pdf,,Slides on statistical methods for knowledge accumulation and benchmarking in data quality and anomaly detection.
+,"Komninos, Andreas",How to Read Research Papers Efficiently,Slides/20200101_Komnios_How_to_read_papers.pdf,,Presentation on strategies and techniques for efficient reading and understanding of academic research papers in data quality and related fields.
+,Nick Harley,Statistical Learning of Knowledge from Sequential Data,Slides/20211216_sem4_NickHarley_Statistical-Learning-of-Knowledge-from-Sequence-Data.pdf,,"Slides on statistical learning approaches for extracting knowledge from sequential data, focusing on time series analysis and pattern discovery."
+,Eamonn Keogh,Problems with Time Series Anomaly Detection,Slides/20220101_Keogh_Eamonn_Problems_with_TSAD.pdf,,"Presentation on challenges and limitations in time series anomaly detection, including evaluation issues and real-world implementation problems."
+,Marion HARTMANN,CEA Insight: Office Facility Transformation 1,Slides/20240115_Slides_CEA_insight_OFS_TW_1.pdf,,Slides on facility transformation and optimization insights from the French Alternative Energies and Atomic Energy Commission (CEA).
+,"Boniol, François",Time Series Anomaly Detection: DiiP Framework,Slides/20240606_Boniol_Lecture_TSAD_DiiP.pdf,,"Lecture on a framework for detecting anomalies in time series data, focusing on domain-specific insights and practical implementation."
+,"Boniol, François",Machine Learning for Jets: Anomaly Detection in Particle Physics,Slides/20241104_Boniol_Lecture_TSAD_ML4Jets.pdf,,"Presentation on applying machine learning techniques for anomaly detection in jet physics data, with applications in particle physics research."
+,"Boniol, François",Time Series Anomaly Detection: Current Challenges and Future Directions,Slides/20250529_Boniol_Lecture_TSAD.pdf,,"Lecture on current challenges in time series anomaly detection and future research directions, including real-time detection and evaluation."
+,Bonionl,Evaluation Measures for Anomaly Detection,Slides/20250529_Bonionl_Evaluation_measures.pdf,,"Slides on evaluation metrics and measures for assessing anomaly detection performance, including precision, recall, and F1-score considerations."
+,Python CPU EN,CPU Energy Monitoring and Anomaly Detection in Python,Slides/20250707_Python_CPU_EN.pdf,,Tutorial on implementing CPU energy monitoring and anomaly detection using Python libraries and statistical methods.
+,Various Authors,Data Quality Evaluation using Probability Models,Stage/reports/DataQualityEvaluationusingProbabilityModels.pdf,,"Report on using probabilistic models for evaluating and ensuring data quality, focusing on statistical approaches and uncertainty quantification."
+,Various Authors,Paper: Data Quality Evaluation and Improvement,Stage/reports/paper_data_quality.pdf,,"Academic paper discussing methods for evaluating and improving data quality, including practical approaches and case studies."
+,Arnaud,All-Season Monitoring of Concrete Repair in an Urban Tunnel in Brussels,Stage/waiting/All‑season monitoring of concrete repair in an urban tunnel in Brussels_arnaud2021.pdf,,"Study on monitoring concrete repair work in urban tunnels across all seasons, focusing on data quality and measurement challenges."
+,Various Authors,Expect the Unexpected: Data Quality Surprises,Stage/waiting/Expect the Unexpected.pdf,,Report on unexpected data quality issues and surprises encountered in real-world data collection and analysis projects.
+,Various Authors,MNE Software for Processing MEG and EEG Data,Stage/waiting/MNE software for processing MEG and EEG data.pdf,,Documentation on the MNE (Magnetoencephalography Neuroimaging Environment) software for processing magnetoencephalography and electroencephalography data.
+,Various Authors,Sensor Data Reconstruction using Bidirectional RNN,Stage/waiting/Sensor data reconstruction using bidirectional rnn.pdf,,Research on reconstructing missing sensor data using bidirectional recurrent neural networks for time series analysis.
+,Various Authors,Unsupervised Outlier Detection for Time Series Indoor Air Quality using LSTM AE with Ensemble,Stage/waiting/Unsupervised outlier detection for TS indoor air quality LSTM AE with Ensamble.pdf.pdf,,Study on using LSTM autoencoder with ensemble methods for unsupervised outlier detection in indoor air quality time series data.
+,Various Authors,Anomalous Sensor Data Detection and Classification,Stage/waiting/boh/sensors-21-05834.pdf,,Research on detecting and classifying anomalous sensor data using machine learning approaches for industrial monitoring.
+,Various Authors,Sensor Data Quality Assessment and Improvement,Stage/waiting/boh/sensors-23-05993.pdf,,Study on assessing and improving sensor data quality through calibration and quality control procedures.
+2020,Florentin Delaine,In situ calibration of low-cost instrumentation for the measurement of ambient quantities: evaluation methodology of the algorithms and diagnosis of drifts,Thesis/96044_DELAINE_2020_archivage.pdf,,Doctoral thesis on developing evaluation methodology for calibration algorithms of low-cost environmental sensors and diagnosing drift issues.
+,Bosman,Anomaly Detection in Networked Embedded Systems,Thesis/Anomaly_detection_in_networked_embedded_20160912_Bosman.pdf,,"Thesis on developing anomaly detection algorithms for networked embedded systems, focusing on fault detection and diagnosis."
+,Selcuk,Graduation Thesis: Data Quality Assessment for Industrial Applications,Thesis/Graduation_Thesis_Selcuck.pdf,,Undergraduate thesis on data quality assessment methods and their application in industrial data analysis and monitoring.
+,Various Authors,The Kalman Filter: An Introduction,Tutorials/20110205 Il filtro di Kalman un'introduzione.pdf,,Tutorial introduction to Kalman filtering techniques for state estimation and tracking in dynamic systems.
+2018,Various Authors,K-Nearest Neighbors (KNN) Tutorial and Notes,Tutorials/2018_knn_notes.pdf,,"Tutorial notes on K-nearest neighbors algorithm for classification and regression, including implementation details and applications."
+,Various Authors,Education in I&M: Tutorial Paper: Autoregressive Integrated Moving Average Time Series Analysis for Measurement Professionals,Tutorials/202306_Education_in_IampM_Tutorial_Paper_Autoregressive_Integrated_Moving_Average_Time_Series_Analysis_for_Measurement_Professionals.pdf,,"Tutorial paper on ARIMA time series analysis methods for measurement professionals, focusing on practical applications in industrial instrumentation and measurement."
+,Anais Dotis,Why Use K-Means for Time Series Data? (Part Two),Tutorials/k-means-tutorial.pdf,,"Tutorial explaining the use of K-means clustering for time series data analysis, focusing on advantages and practical implementation."
 1979,J. A. Hartigan and M. A. Wong,Algorithm AS 136: A K-Means Clustering Algorithm,Zpapers/1979/Hartigan_Wong_1979_Algorithm_AS_136.pdf,JCL4WCUQ,
 1981,Eickhoff Ulrich,Optical frequency domain reflectometry in single mode fiber,Zpapers/1981/Eickhoff_Ulrich_1981_Optical_frequency_domain_reflectometry_in_single-mode_fiber.pdf,,
 1986,Ghafoori Shiraz Okoshi,Optical frequency domain reflectometery,Zpapers/1986/Ghafoori-Shiraz_Okoshi_1986_Optical_frequency-domain_reflectometery.pdf,,
