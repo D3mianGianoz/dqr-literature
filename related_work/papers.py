@@ -59,9 +59,9 @@ _norm_text = norm_text
 
 def find(query: str | None, ref: str | None) -> tuple[dict[str, str], str]:
     """Return (row, source) for a query over the SoTA citations then the inventory."""
-    if not query and not ref:
-        raise SystemExit("Provide a query string or --ref.")
     q_norm = _norm_text(query) if query else ""
+    if not q_norm and not ref:
+        raise SystemExit("Provide a query string or --ref.")
     soa = [
         r
         for r in _load(SOA)
@@ -226,7 +226,7 @@ def _make_slug(author: str, year: str, title: str, cap: int = 90) -> str:
         parts = [p.strip() for p in auth.split(",") if p.strip()]
         if any("et al" in p.lower() for p in parts):
             author_slug = _slugify(" ".join(parts))
-        elif len(parts) == 2 and not any(len(p.split()) > 2 for p in parts):
+        elif len(parts) == 2 and len(parts[0].split()) == 1:
             author_slug = _slugify(parts[0])
         else:
             surnames = [_extract_surname(p) for p in parts]
