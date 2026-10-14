@@ -61,6 +61,11 @@ def _label(row: dict[str, str]) -> str:
     )
 
 
+def _short_author(author: str) -> str:
+    authors = author.split(" and ")
+    return ", ".join(authors[:3]) + ", et al." if len(authors) > 3 else author
+
+
 def _select(candidates: list[dict[str, str]], query: str) -> dict[str, str]:
     print(f"Select a paper matching {query!r}:")
     for number, row in enumerate(candidates, 1):
@@ -429,7 +434,7 @@ def todo(query: str | None = None, limit: int = 10) -> None:
             refs = soa_by_path.get(row["path"], [])
             legacy = f" [legacy SoA: {', '.join(refs)}]" if refs else ""
             print(
-                f"  {row.get('year') or '----'} {row.get('author', '')} — "
+                f"  {row.get('year') or '----'} {_short_author(row.get('author', ''))} — "
                 f"{row.get('title', '')}{legacy}"
             )
     elif not inv_unread:

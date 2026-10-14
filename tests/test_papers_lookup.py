@@ -159,6 +159,13 @@ class TestPaperLookup(unittest.TestCase):
         self.assertNotIn("Data Quality for Sensor Networks", text)
         self.assertNotIn(".pdf", text)
 
+    def test_todo_shortens_long_author_lists(self):
+        self.assertEqual(
+            papers._short_author("One Author and Two Author and Three Author and Four Author"),
+            "One Author, Two Author, Three Author, et al.",
+        )
+        self.assertEqual(papers._short_author("One Author and Two Author"), "One Author and Two Author")
+
     def test_show_uses_inventory_abstract_without_resolving_pdf_root(self):
         output = io.StringIO()
         with (
