@@ -4,11 +4,30 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from related_work import semantic
 from related_work.papers import _make_slug
 
 
 class TestScaffold(unittest.TestCase):
+    def test_help_shows_chars_example(self):
+        r = subprocess.run(
+            [sys.executable, "-m", "related_work.papers", "--help"],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent.parent,
+        )
+        self.assertEqual(r.returncode, 0)
+        self.assertIn('    uv run papers show "metric maze" --chars 500\n', r.stdout)
+
+    def test_short_papers_command(self):
+        r = subprocess.run(
+            ["uv", "run", "papers", "todo"],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent.parent,
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("Logged as read:", r.stdout)
+
     def test_scaffold_subcommand_registered(self):
         """The scaffold subcommand is registered and accepts --force / --ref."""
         r = subprocess.run(
@@ -144,6 +163,7 @@ class TestScaffold(unittest.TestCase):
     def test_scaffold_missing_zotero_key_shares_snapshot(self):
         from unittest.mock import patch
         from related_work import papers as p
+        from related_work.zotero import ZoteroClient
 
         notes = Path(tempfile.mkdtemp()) / "notes" / "papers"
         row = {
@@ -152,48 +172,59 @@ class TestScaffold(unittest.TestCase):
             "author": "Test Author",
             "title": "X",
         }
-        snapshot = [{"key": "K1", "data": {"itemType": "journalArticle", "title": "X"}}]
+        snapshot = [
+            {"key": "K1", "data": {"itemType": "journalArticle", "title": "X"}},
+            {
+                "key": "A1",
+                "data": {
+                    "itemType": "attachment",
+                    "parentItem": "K1",
+                    "filename": "test.pdf",
+                },
+            },
+            {
+                "key": "N1",
+                "data": {
+                    "itemType": "annotation",
+                    "parentItem": "A1",
+                    "annotationText": "useful result",
+                    "annotationPageLabel": "2",
+                    "annotationType": "highlight",
+                },
+            },
+        ]
+        client = ZoteroClient()
         with patch.object(p, "NOTES", notes), \
              patch.object(p, "find", return_value=(row, "inv")), \
              patch.object(p, "_extract_paper_body", return_value="Summary."), \
              patch.object(p, "corpus_root", return_value=Path(".")), \
-             patch.object(p, "ZoteroClient") as mock_client_class:
-            mock_client = mock_client_class.return_value
-            mock_client.is_available.return_value = True
-            mock_client.get_all_library_items.return_value = snapshot
-            mock_client.resolve_item_key.return_value = "K1"
+             patch.object(client, "is_available", return_value=True), \
+             patch.object(client, "get_all_library_items", return_value=snapshot) as get_items, \
+             patch.object(p, "ZoteroClient", return_value=client):
             p.scaffold(query="test", ref=None, force=True)
-        mock_client.resolve_item_key.assert_called_once_with(
-            path="test.pdf", title="X", items=snapshot
-        )
-        mock_client.get_annotations_for_item.assert_called_once_with(
-            item_key="K1", items=snapshot
-        )
-        mock_client.get_all_library_items.assert_called_once_with()
+        get_items.assert_called_once_with()
+        content = (notes / "author-2020-x.md").read_text(encoding="utf-8")
+        self.assertIn('"useful result"', content)
 
     def test_annotations_missing_zotero_key_shares_snapshot(self):
         from contextlib import redirect_stdout
         from io import StringIO
         from unittest.mock import patch
         from related_work import papers as p
+        from related_work.zotero import ZoteroClient
 
         row = {"path": "test.pdf", "title": "X"}
         snapshot = [{"key": "K1", "data": {"itemType": "journalArticle", "title": "X"}}]
+        client = ZoteroClient()
+        output = StringIO()
         with patch.object(p, "find", return_value=(row, "inv")), \
-             patch("related_work.zotero.ZoteroClient") as mock_client_class, \
-             redirect_stdout(StringIO()):
-            mock_client = mock_client_class.return_value
-            mock_client.is_available.return_value = True
-            mock_client.get_all_library_items.return_value = snapshot
-            mock_client.resolve_item_key.return_value = "K1"
+             patch.object(client, "is_available", return_value=True), \
+             patch.object(client, "get_all_library_items", return_value=snapshot) as get_items, \
+             patch.object(p, "ZoteroClient", return_value=client), \
+             redirect_stdout(output):
             p.annotations(query="X", ref=None)
-        mock_client.resolve_item_key.assert_called_once_with(
-            path="test.pdf", title="X", items=snapshot
-        )
-        mock_client.get_annotations_for_item.assert_called_once_with(
-            item_key="K1", items=snapshot
-        )
-        mock_client.get_all_library_items.assert_called_once_with()
+        get_items.assert_called_once_with()
+        self.assertIn("No annotations found", output.getvalue())
 
 
 class TestSlugGeneration(unittest.TestCase):

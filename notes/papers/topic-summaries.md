@@ -2,7 +2,7 @@
 
 These selective notes group references that were summarized thematically in
 the former review. They are not a reading-status record; consult
-`data/reading_log.csv` or run `uv run python -m related_work.papers todo`.
+`data/reading_log.csv` or run `uv run papers todo`.
 
 ## Data quality and sensor validation
 

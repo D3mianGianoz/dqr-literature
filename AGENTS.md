@@ -1,7 +1,7 @@
 # Repository workflow
 
-Run commands from the repository root. Keep local filesystem paths in
-tracked files; configuration lives in `pyproject.toml`.
+Run commands from the repository root. Keep machine-specific filesystem paths
+in ignored local configuration, not tracked files.
 
 ## Repository boundary
 
@@ -29,7 +29,7 @@ uv sync
 uv run python -m spacy download en_core_web_md
 ```
 
-Configure the Literature corpus root in `pyproject.toml` under
+Configure the Literature corpus root in ignored `pyproject.local.toml` under
 `[tool.dqr-literature]`:
 
 ```toml
@@ -37,8 +37,9 @@ Configure the Literature corpus root in `pyproject.toml` under
 lit_root = "/path/to/Literature"
 ```
 
-Commands read the corpus root automatically. The `--root` CLI flag still
-takes precedence over the config file.
+Commands read the corpus root automatically. Resolution order is `--root`,
+`LIT_ROOT` (or `DQR_LIT_ROOT`), `pyproject.local.toml`, then `pyproject.toml`.
+The local file is ignored by Git; use it for machine-specific paths.
 There is one canonical inventory:
 `data/inventory.csv`, with `year,author,title,path,zotero_key,abstract`
 columns. Paths are relative to the Literature root. Bibliography and
@@ -74,17 +75,20 @@ Look up a paper by author/title text, record it as read, or list reading
 progress:
 
 ```bash
-uv run python -m related_work.papers show "metric maze"
-uv run python -m related_work.papers mark "metric maze"
-uv run python -m related_work.papers todo
-uv run python -m related_work.papers recommend "overhead crane sensor fault"
-uv run python -m related_work.papers annotations "donne and davis"
+uv run papers show "metric maze"
+uv run papers mark "metric maze"
+uv run papers todo
+uv run papers recommend "overhead crane sensor fault"
+uv run papers annotations "donne and davis"
+uv run papers scaffold "donne and davis"
 ```
 
 Use `show --ref NUMBER` to select a bibliography reference. `recommend` ranks
 unread papers by spaCy semantic vector similarity to a natural language query
 (pass `--all` to include read papers). `annotations` fetches highlights,
 underlines, and notes directly from the local Zotero API for the paper.
+`scaffold` creates a starter paper note from the PDF summary and Zotero
+highlights; pass `--force` to overwrite an existing note.
 The reading log is `data/reading_log.csv`; update it through the `mark` command.
 Derive reading progress from these commands rather than copying counts into
 documentation; counts in prose become stale.
@@ -109,6 +113,8 @@ association.
 
 `data/soa_citations.csv` may contain legacy `Literature/`-prefixed paths.
 Paper lookup and the SoA diff normalize those to the current inventory paths.
+Check expected citation matches against the current inventory with
+`uv run python -m related_work.soa_diff`.
 
 ## Tests
 

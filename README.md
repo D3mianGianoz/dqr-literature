@@ -10,8 +10,8 @@ for its selected sources and why they matter.
 Detailed claims and their limitations belong in `notes/papers/`; keep
 `review.md` as a concise synthesis. AUO references should link here using
 relative paths, assuming sibling checkouts. Keep local filesystem paths in
-ignored configuration. Derive reading progress from `uv run python -m
-related_work.papers todo` rather than maintaining counts in documentation.
+ignored local configuration. Derive reading progress with
+`uv run papers todo` rather than maintaining counts in documentation.
 
 There is one canonical inventory, `data/inventory.csv`. It indexes PDFs from
 the Literature folder and can be enriched in place with Zotero metadata while

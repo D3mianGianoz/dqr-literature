@@ -6,7 +6,9 @@ to disk and automatically refreshed when data/inventory.csv changes.
 
 Usage:
     from related_work.semantic import rank_inventory
-    results = rank_inventory("overhead crane sensor fault detection", unread_only=True)
+    results = rank_inventory(
+        "overhead crane sensor fault detection", unread_only=True
+    )
 """
 
 from __future__ import annotations

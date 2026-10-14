@@ -7,10 +7,9 @@ import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from related_work import inventory
-
-_DATA = Path(__file__).parent.parent / "data"
 
 
 class TestCorrectionsGuard(unittest.TestCase):
@@ -20,33 +19,24 @@ class TestCorrectionsGuard(unittest.TestCase):
         self, lit, corr, out, zotero_items=(), zotero_local=False,
         configured_root=None,
     ):
-        old_argv = sys.argv
-        old_corrections = inventory.CORRECTIONS
-        old_inventory = inventory.INVENTORY
-        old_corpus_root = inventory.corpus_root
-        old_configured_root = inventory._pyproject_lit_root
-        old_zotero_items = inventory._zotero_items
-        sys.argv = [old_argv[0]] + (["--zotero-local"] if zotero_local else [])
-        inventory.CORRECTIONS = corr
-        inventory.INVENTORY = out
-        inventory.corpus_root = lambda root=None: lit
-        inventory._pyproject_lit_root = lambda: configured_root or lit
-        inventory._zotero_items = lambda: list(zotero_items)
-        try:
-            with contextlib.redirect_stdout(io.StringIO()), \
-                 contextlib.redirect_stderr(io.StringIO()):
-                try:
-                    inventory.main()
-                    return None
-                except SystemExit as e:
-                    return str(e)
-        finally:
-            sys.argv = old_argv
-            inventory.CORRECTIONS = old_corrections
-            inventory.INVENTORY = old_inventory
-            inventory.corpus_root = old_corpus_root
-            inventory._pyproject_lit_root = old_configured_root
-            inventory._zotero_items = old_zotero_items
+        with (
+            patch.object(sys, "argv", [sys.argv[0]] + (["--zotero-local"] if zotero_local else [])),
+            patch.multiple(
+                inventory,
+                CORRECTIONS=corr,
+                INVENTORY=out,
+                corpus_root=lambda root=None: lit,
+                _pyproject_lit_root=lambda: configured_root or lit,
+                _zotero_items=lambda: list(zotero_items),
+            ),
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
+            try:
+                inventory.main()
+                return None
+            except SystemExit as exc:
+                return str(exc)
 
     def test_orphaned_corrections_raise(self):
         """Corrections referencing missing paths are caught."""

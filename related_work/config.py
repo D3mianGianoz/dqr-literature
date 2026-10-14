@@ -64,6 +64,6 @@ def corpus_root(root: Path | None = None, *, config: Path | None = None) -> Path
     if value := _pyproject_lit_root(config):
         return value
     raise SystemExit(
-        "Set [tool.dqr-literature].lit_root in pyproject.toml."
+        "Set [tool.dqr-literature].lit_root in pyproject.local.toml or pyproject.toml, "
+        "or set LIT_ROOT."
     )
-

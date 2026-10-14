@@ -5,6 +5,9 @@ and writes a CSV index. Re-runnable as the collection grows.
 
 Usage:
     uv run python -m related_work.inventory
+    uv run python -m related_work.inventory \\
+        --root /path/to/Literature --out /tmp/inventory.csv
+    uv run python -m related_work.inventory --zotero-local
 """
 
 import argparse
@@ -41,9 +44,6 @@ def parse(paper: Path) -> tuple[str, str, str]:
         )
     folder = paper.parent.name
     return (folder if YEAR.fullmatch(folder) else ""), "", stem
-
-
-_title_key = clean_alphanumeric
 
 
 def load_overrides() -> dict[str, dict[str, str]]:
@@ -98,7 +98,7 @@ def enrich(
     by_filename: dict[str, set[str]] = defaultdict(set)
     by_title: dict[str, set[str]] = defaultdict(set)
     for key, data in records.items():
-        title = _title_key(data.get("title", ""))
+        title = clean_alphanumeric(data.get("title", ""))
         if title:
             by_title[title].add(key)
         for filename in attachments[key]:
@@ -114,7 +114,7 @@ def enrich(
         for index in rows_by_filename[filename]:
             candidates[index].update(keys)
     for index, row in enumerate(rows):
-        candidates[index].update(by_title.get(_title_key(row["title"]), set()))
+        candidates[index].update(by_title.get(clean_alphanumeric(row["title"]), set()))
         if row["year"]:
             candidates[index] = {
                 key
@@ -174,9 +174,17 @@ def _zotero_items() -> list[dict]:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--root", type=Path, help="literature root (defaults to [tool.dqr-literature].lit_root in pyproject.toml)")
-    ap.add_argument("--out", type=Path, help="CSV output path")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--root",
+        type=Path,
+        help="Literature root (defaults to LIT_ROOT/DQR_LIT_ROOT, local config, then pyproject.toml)",
+    )
+    ap.add_argument(
+        "--out", type=Path, help="inventory CSV output (default: data/inventory.csv)"
+    )
     ap.add_argument(
         "--zotero-local",
         action="store_true",

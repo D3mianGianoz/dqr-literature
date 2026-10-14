@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parent.parent
 DATA = REPO / "data"
@@ -138,8 +139,37 @@ class TestToolingCompatibility(unittest.TestCase):
         self.assertFalse(row["path"].startswith("/"))
 
 
+class TestCorpusRootPrecedence(unittest.TestCase):
+    def test_environment_overrides_local_and_tracked_configuration(self):
+        from related_work import config
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "pyproject.local.toml").write_text(
+                '[tool.dqr-literature]\nlit_root = "/local"\n', encoding="utf-8"
+            )
+            (repo / "pyproject.toml").write_text(
+                '[tool.dqr-literature]\nlit_root = "/tracked"\n', encoding="utf-8"
+            )
+            with patch.object(config, "REPO", repo), patch.dict(
+                "os.environ", {}, clear=True
+            ):
+                self.assertEqual(config._pyproject_lit_root(), Path("/local"))
+                with patch.dict("os.environ", {"DQR_LIT_ROOT": "/env"}):
+                    self.assertEqual(config._pyproject_lit_root(), Path("/env"))
+                with patch.dict(
+                    "os.environ", {"LIT_ROOT": "/preferred", "DQR_LIT_ROOT": "/env"}
+                ):
+                    self.assertEqual(
+                        config._pyproject_lit_root(), Path("/preferred")
+                    )
+                self.assertEqual(
+                    config.corpus_root(Path("/explicit")), Path("/explicit")
+                )
+
+
 class TestSpacyRelatedWork(unittest.TestCase):
-    """spaCy-powered features added by the feat/spacy-matching plan.
+    """Tests for spaCy-backed matching and paper summaries.
 
     Skipped entirely when the model cannot be loaded (no graceful fallback).
     """

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Regenerate the hand-crafted test PDFs used by the test_paths suite.
+"""Regenerate the test PDFs used by the test_paths suite.
 
-Uses pandoc (must be on PATH) to convert markdown → PDF. The source
-markdown lives next to this file; the output PDFs are written to
-the same directory so the tests can find them.
+Uses pandoc (must be on PATH) to convert embedded Markdown fixtures to PDFs.
+The generated files are written beside this script for the tests to find.
 """
 
 import subprocess
