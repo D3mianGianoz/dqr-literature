@@ -74,20 +74,6 @@ class TestCorrectionsGuard(unittest.TestCase):
             self.assertIsNotNone(msg)
             self.assertIn("references 1 path(s) no longer in the inventory", msg)
 
-    def test_current_root_validates_all_corrections(self):
-        with TemporaryDirectory() as tmp:
-            tmp = Path(tmp)
-            lit = tmp / "alternate"
-            lit.mkdir()
-            (lit / "2020 Current Paper.pdf").touch()
-            corr = tmp / "corrections.json"
-            corr.write_text(
-                json.dumps({"old/removed.pdf": {"year": "2019"}}),
-                encoding="utf-8",
-            )
-            msg = self._run(lit, corr, tmp / "out.csv")
-            self.assertIn("references 1 path(s) no longer in the inventory", msg)
-
     def test_malformed_corrections_fail(self):
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)

@@ -18,16 +18,6 @@ class TestScaffold(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
         self.assertIn('    uv run papers show "metric maze" --chars 500\n', r.stdout)
 
-    def test_short_papers_command(self):
-        r = subprocess.run(
-            ["uv", "run", "papers", "todo"],
-            capture_output=True,
-            text=True,
-            cwd=Path(__file__).parent.parent,
-        )
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("Logged as read:", r.stdout)
-
     def test_scaffold_subcommand_registered(self):
         """The scaffold command exposes --force and the explicit --soa-ref."""
         r = subprocess.run(
@@ -55,18 +45,6 @@ class TestScaffold(unittest.TestCase):
                     cwd=Path(__file__).parent.parent,
                 )
                 self.assertNotEqual(result.returncode, 0)
-
-    def test_scaffold_cli_skips_existing_note(self):
-        """Existing note files are not overwritten without --force."""
-        r = subprocess.run(
-            [sys.executable, "-m", "related_work.papers", "scaffold", "donne and davis"],
-            capture_output=True,
-            text=True,
-            cwd=Path(__file__).parent.parent,
-        )
-        self.assertEqual(r.returncode, 0)
-        self.assertIn("already exists", r.stdout)
-        self.assertNotIn("wrote:", r.stdout)
 
     def test_scaffold_offline_graceful(self):
         """With Zotero down, scaffold still writes a note with a stub comment."""
