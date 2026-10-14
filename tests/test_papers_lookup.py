@@ -53,6 +53,13 @@ class TestPaperLookup(unittest.TestCase):
             "archive/sensors.pdf",
         )
 
+    def test_displayed_author_year_title_heading_selects_directly(self):
+        row, _ = papers.find(
+            "Damiano Gianotti and Ada Smith (2026) — Assessing Reliability of Sensor Data",
+            None,
+        )
+        self.assertEqual(row["path"], "2026/paper.pdf")
+
     def test_typo_only_suggests_and_never_guesses_non_interactively(self):
         output = io.StringIO()
         with (
@@ -60,9 +67,10 @@ class TestPaperLookup(unittest.TestCase):
             contextlib.redirect_stdout(output),
             self.assertRaisesRegex(SystemExit, "exact inventory-relative path"),
         ):
-            papers.find("Assesing reliability", None)
+            papers.find("Assesing", None)
         self.assertIn("likely matches", output.getvalue())
         self.assertIn("2026/paper.pdf", output.getvalue())
+        self.assertNotIn("archive/sensors.pdf", output.getvalue())
 
     def test_ambiguous_query_fails_non_interactively(self):
         output = io.StringIO()

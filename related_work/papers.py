@@ -48,7 +48,9 @@ def _query_tokens(query: str) -> list[str]:
     return [
         token
         for token in clean_alphanumeric(query).split()
-        if token not in {"et", "al", "and"}
+        if token not in {"et", "al", "and"} and not (
+            len(token) == 4 and token.isdecimal()
+        )
     ]
 
 
@@ -93,7 +95,7 @@ def _suggestions(query: str, rows: list[dict[str, str]]) -> list[dict[str, str]]
             )
             for token in tokens
         ]
-        if all(score >= 0.72 for score in similarities):
+        if all(score >= 0.85 for score in similarities):
             scored.append((sum(similarities) / len(similarities), row))
     scored.sort(key=lambda item: item[0], reverse=True)
     return [row for _, row in scored[:5]]
