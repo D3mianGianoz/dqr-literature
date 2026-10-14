@@ -18,12 +18,15 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from related_work.config import clean_alphanumeric
+
 
 class ZoteroClient:
     """Local Zotero client interfacing with http://127.0.0.1:23119."""
 
     def __init__(self, base_url: str = "http://127.0.0.1:23119/api/users/0") -> None:
         self.base_url = base_url.rstrip("/")
+        self._library_cache: list[dict[str, Any]] | None = None
 
     def _request(self, endpoint: str, timeout: float = 3.0) -> Any:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
@@ -149,36 +152,32 @@ class ZoteroClient:
         if zotero_key:
             return zotero_key
 
-        import unicodedata
-
-        def _norm(s: str) -> str:
-            return "".join(
-                c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
-            ).casefold().strip()
-
-        def _clean_alphanumeric(s: str) -> str:
-            normed = _norm(s)
-            return " ".join("".join(c if c.isalnum() else " " for c in normed).split())
-
         if items is None:
-            items = self.get_all_library_items()
+            if self._library_cache is not None:
+                items = self._library_cache
+            else:
+                items = self.get_all_library_items()
+                self._library_cache = items
 
         if path:
-            target_name = _clean_alphanumeric(Path(path).stem)
+            target_name = clean_alphanumeric(Path(path).stem)
             for item in items:
                 d = item.get("data", {})
                 if d.get("itemType") == "attachment" and d.get("parentItem"):
                     fn = d.get("filename") or d.get("path", "")
-                    if fn and _clean_alphanumeric(Path(fn).stem) == target_name:
+                    if fn and clean_alphanumeric(Path(fn).stem) == target_name:
                         return d["parentItem"]
 
         if title:
-            target_title = _clean_alphanumeric(title)
+            target_title = clean_alphanumeric(title)
             for item in items:
                 d = item.get("data", {})
                 if d.get("itemType") not in {"attachment", "note", "annotation"}:
-                    t = _clean_alphanumeric(d.get("title", ""))
-                    if t and (target_title == t or (len(target_title) > 20 and (target_title in t or t in target_title))):
+                    t = clean_alphanumeric(d.get("title", ""))
+                    if t and (
+                        target_title == t
+                        or (min(len(target_title), len(t)) > 20 and (target_title in t or t in target_title))
+                    ):
                         return item.get("key")
 
         return None
@@ -195,11 +194,16 @@ class ZoteroClient:
         Fetches the full library only once and shares the snapshot between key
         resolution and annotation grouping.
         """
+        if items is None:
+            if self._library_cache is not None:
+                items = self._library_cache
+            else:
+                items = self.get_all_library_items()
+                self._library_cache = items
+
         if item_key:
             resolved = item_key
         else:
-            if items is None:
-                items = self.get_all_library_items()
             resolved = self.resolve_item_key(path=path, title=title, items=items)
         if not resolved:
             return []

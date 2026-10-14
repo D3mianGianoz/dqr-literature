@@ -8,4 +8,7 @@ uv.lock
 # One-shot / local artifacts (not part of the project record)
 ponytail-audit.md
 ai_assisted_literature_review_enhancement_plan.md
+pyproject.local.toml
+.coverage
 *.npz
+
