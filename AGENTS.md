@@ -87,10 +87,11 @@ uv run papers scaffold "donne and davis"
 Queries search the inventory by author/title. Ambiguous and suggested matches
 require an explicit terminal selection; non-interactive calls fail safely.
 Paper commands accept `--soa-ref NUMBER` for a legacy reference in
-`data/soa_citations.csv`. `todo` lists unread inventory papers and labels any
-associated SoA numbers as legacy references. `recommend` ranks unread papers by
-spaCy semantic similarity to a natural-language query
-(pass `--all` to include read papers). `annotations` fetches highlights,
+`data/soa_citations.csv`. `todo` shows the 10 newest unread papers by default;
+filter with author/title terms, adjust `--limit`, or use `--limit 0` for all.
+It labels associated SoA numbers as legacy references. `recommend` ranks unread
+papers using both spaCy semantic similarity and exact title/abstract term
+matches (pass `--all` to include read papers). `annotations` fetches highlights,
 underlines, and notes directly from the local Zotero API for the paper.
 `scaffold` creates a starter paper note from the PDF summary and Zotero
 highlights; pass `--force` to overwrite an existing note.

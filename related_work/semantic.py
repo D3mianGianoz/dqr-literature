@@ -21,7 +21,7 @@ import zipfile
 import numpy as np
 
 from related_work.common import get_nlp, load_csv
-from related_work.config import DATA, INVENTORY, READING_LOG
+from related_work.config import DATA, INVENTORY, READING_LOG, clean_alphanumeric
 
 CACHE_FILE = DATA / ".vector_cache.npz"
 
@@ -82,7 +82,7 @@ def rank_inventory(
     reading_log_path: Path = READING_LOG,
     cache_path: Path | None = None,
 ) -> list[dict[str, Any]]:
-    """Rank inventory entries by semantic similarity to the query string."""
+    """Rank by semantic similarity, boosted by exact title and abstract terms."""
     rows, matrix = get_inventory_vectors(inventory_path, cache_path=cache_path)
     if len(rows) == 0:
         return []
@@ -95,15 +95,35 @@ def rank_inventory(
     if q_norm == 0:
         return []
     q_normed = q_vec / q_norm
+    query_terms = {
+        term
+        for token in q_doc
+        if token.is_alpha and not token.is_stop
+        for term in clean_alphanumeric(token.text).split()
+    }
 
-    scores = matrix @ q_normed
+    semantic_scores = matrix @ q_normed
 
     ranked: list[dict[str, Any]] = []
-    for score, row in zip(scores, rows):
+    for semantic_score, row in zip(semantic_scores, rows):
         stem = Path(row["path"]).stem
         is_read = stem in read_keys
         if unread_only and is_read:
             continue
+        if query_terms:
+            title_terms = set(clean_alphanumeric(row.get("title", "")).split())
+            paper_terms = set(
+                clean_alphanumeric(
+                    f"{row.get('title', '')} {row.get('abstract', '')}"
+                ).split()
+            )
+            title_coverage = len(query_terms & title_terms) / len(query_terms)
+            paper_coverage = len(query_terms & paper_terms) / len(query_terms)
+            keyword_score = 0.75 * title_coverage + 0.25 * paper_coverage
+            # ponytail: fixed 75/25 blend; tune only against a judged query set.
+            score = 0.75 * max(float(semantic_score), 0.0) + 0.25 * keyword_score
+        else:
+            score = float(semantic_score)
         ranked.append(
             {
                 "score": float(score),

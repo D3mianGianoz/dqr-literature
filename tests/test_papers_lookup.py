@@ -143,6 +143,21 @@ class TestPaperLookup(unittest.TestCase):
         self.assertIn("[legacy SoA: 20]", text)
         self.assertIn("archive/sensors.pdf", text)
 
+    def test_todo_filters_and_limits_unread_papers(self):
+        log = Path(self.temp.name) / "reading_log.csv"
+        log.write_text("key,source,year,soa_ref,citation\n", encoding="utf-8")
+        output = io.StringIO()
+        with (
+            patch.object(papers, "LOG", log),
+            contextlib.redirect_stdout(output),
+        ):
+            papers.todo("sensor", limit=1)
+        text = output.getvalue()
+        self.assertIn("Unread matches for 'sensor': 2", text)
+        self.assertIn("1 of 2 shown", text)
+        self.assertIn("2026/paper.pdf", text)
+        self.assertNotIn("archive/sensors.pdf", text)
+
     def test_show_uses_inventory_abstract_without_resolving_pdf_root(self):
         output = io.StringIO()
         with (

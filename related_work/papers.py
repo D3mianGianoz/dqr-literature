@@ -384,11 +384,32 @@ def mark(query: str | None, soa_ref: str | None) -> None:
     print(f"logged: {key}  ({len(entries)} read)")
 
 
-def todo() -> None:
+def todo(query: str | None = None, limit: int = 10) -> None:
     entries = _load(LOG)
     read = {e["key"] for e in entries}
     inv = _load(INVENTORY)
     inv_unread = [r for r in inv if Path(r["path"]).stem not in read]
+    total_unread = len(inv_unread)
+    if query:
+        terms = set(_query_tokens(query))
+        if not terms:
+            raise SystemExit("Todo query must include an author or title term.")
+        inv_unread = [
+            row
+            for row in inv_unread
+            if terms.issubset(
+                set(clean_alphanumeric(f"{row['author']} {row['title']}").split())
+            )
+        ]
+    inv_unread.sort(
+        key=lambda row: (
+            not row.get("year", "").isdecimal(),
+            -int(row["year"]) if row.get("year", "").isdecimal() else 0,
+            row.get("title", "").casefold(),
+        )
+    )
+    if limit < 0:
+        raise SystemExit("--limit must be zero or greater.")
     soa_by_path: dict[str, list[str]] = {}
     for row in _load(SOA):
         if row["local"] == "yes" and row.get("local_path"):
@@ -396,17 +417,22 @@ def todo() -> None:
                 row["ref"]
             )
     print(f"Logged as read: {len(read)} papers")
-    print(f"Inventory: {len(inv)} total, {len(inv_unread)} unread")
-    print("\nUnread inventory papers:")
-    if inv_unread:
-        for row in inv_unread:
+    print(f"Inventory: {len(inv)} total, {total_unread} unread")
+    if query:
+        print(f"Unread matches for {query!r}: {len(inv_unread)}")
+    shown = inv_unread if limit == 0 else inv_unread[:limit]
+    print(f"\nUnread inventory papers ({len(shown)} of {len(inv_unread)} shown):")
+    if limit and len(inv_unread) > limit:
+        print(f"  More available; use --limit 0 to show all {len(inv_unread)}.")
+    if shown:
+        for row in shown:
             refs = soa_by_path.get(row["path"], [])
             legacy = f" [legacy SoA: {', '.join(refs)}]" if refs else ""
             print(
                 f"  {row.get('year') or '----'} {row.get('author', '')} — "
                 f"{row.get('title', '')} [{row['path']}]{legacy}"
             )
-    else:
+    elif not inv_unread:
         print("  none")
 
 
@@ -549,9 +575,22 @@ def main() -> None:
             c.add_argument(
                 "--chars", type=int, default=1400, help="maximum abstract text to print"
             )
-    sub.add_parser("todo")
+    todo_parser = sub.add_parser("todo", help="show a bounded unread-paper shortlist")
+    todo_parser.add_argument(
+        "query",
+        nargs="?",
+        help="words that must appear in an unread paper's author or title",
+    )
+    todo_parser.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="max papers to show; use 0 for all (default: 10)",
+    )
 
-    rec = sub.add_parser("recommend", help="recommend papers by semantic similarity")
+    rec = sub.add_parser(
+        "recommend", help="rank papers using semantic similarity and exact term matches"
+    )
     rec.add_argument("query", help="natural language search query")
     rec.add_argument("--all", action="store_true", help="include already-read papers")
     rec.add_argument("--limit", type=int, default=10, help="max results to show")
@@ -575,7 +614,7 @@ def main() -> None:
     {
         "show": lambda: show(a.query, a.soa_ref, a.chars),
         "mark": lambda: mark(a.query, a.soa_ref),
-        "todo": todo,
+        "todo": lambda: todo(a.query, a.limit),
         "recommend": lambda: recommend(a.query, unread_only=not a.all, limit=a.limit),
         "annotations": lambda: annotations(a.query, a.soa_ref),
         "scaffold": lambda: scaffold(a.query, a.soa_ref, a.force),
