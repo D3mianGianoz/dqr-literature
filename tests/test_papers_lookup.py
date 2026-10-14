@@ -141,7 +141,7 @@ class TestPaperLookup(unittest.TestCase):
         text = output.getvalue()
         self.assertIn("Inventory: 3 total, 3 unread", text)
         self.assertIn("[legacy SoA: 20]", text)
-        self.assertIn("archive/sensors.pdf", text)
+        self.assertNotIn(".pdf", text)
 
     def test_todo_filters_and_limits_unread_papers(self):
         log = Path(self.temp.name) / "reading_log.csv"
@@ -155,8 +155,9 @@ class TestPaperLookup(unittest.TestCase):
         text = output.getvalue()
         self.assertIn("Unread matches for 'sensor': 2", text)
         self.assertIn("1 of 2 shown", text)
-        self.assertIn("2026/paper.pdf", text)
-        self.assertNotIn("archive/sensors.pdf", text)
+        self.assertIn("Assessing Reliability of Sensor Data", text)
+        self.assertNotIn("Data Quality for Sensor Networks", text)
+        self.assertNotIn(".pdf", text)
 
     def test_show_uses_inventory_abstract_without_resolving_pdf_root(self):
         output = io.StringIO()

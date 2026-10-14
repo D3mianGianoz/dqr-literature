@@ -430,7 +430,7 @@ def todo(query: str | None = None, limit: int = 10) -> None:
             legacy = f" [legacy SoA: {', '.join(refs)}]" if refs else ""
             print(
                 f"  {row.get('year') or '----'} {row.get('author', '')} — "
-                f"{row.get('title', '')} [{row['path']}]{legacy}"
+                f"{row.get('title', '')}{legacy}"
             )
     elif not inv_unread:
         print("  none")
