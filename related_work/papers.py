@@ -4,12 +4,13 @@ Compact abstract extraction, plus a machine-checkable reading log so read/unread
 counts stop being tracked in prose (they have been wrong twice).
 
 Usage:
-    uv run python -m related_work.papers show "metric maze"
-    uv run python -m related_work.papers show --ref 20
-    uv run python -m related_work.papers mark "metric maze"
-    uv run python -m related_work.papers todo
-    uv run python -m related_work.papers scaffold "donne and davis"
-    uv run python -m related_work.papers scaffold --ref 20
+    uv run papers show "metric maze"
+    uv run papers show --ref 20
+    uv run papers show "metric maze" --chars 500
+    uv run papers mark "metric maze"
+    uv run papers todo
+    uv run papers scaffold "donne and davis"
+    uv run papers scaffold --ref 20
 """
 
 import argparse
@@ -21,7 +22,6 @@ import textwrap
 import unicodedata
 from collections import Counter
 from pathlib import Path
-from typing import Any
 
 import spacy
 
@@ -54,19 +54,16 @@ def _load(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(fh))
 
 
-_norm_text = norm_text
-
-
 def find(query: str | None, ref: str | None) -> tuple[dict[str, str], str]:
     """Return (row, source) for a query over the SoTA citations then the inventory."""
-    q_norm = _norm_text(query) if query else ""
+    q_norm = norm_text(query) if query else ""
     if not q_norm and not ref:
         raise SystemExit("Provide a query string or --ref.")
     soa = [
         r
         for r in _load(SOA)
         if r["local"] == "yes"
-        and (r["ref"] == ref if ref else q_norm in _norm_text(r["surnames"]))
+        and (r["ref"] == ref if ref else q_norm in norm_text(r["surnames"]))
     ]
     if soa:
         r = soa[0]
@@ -85,7 +82,7 @@ def find(query: str | None, ref: str | None) -> tuple[dict[str, str], str]:
         )
     for r in _load(INVENTORY):
         if query and (
-            q_norm in _norm_text(r["author"]) or q_norm in _norm_text(r["title"])
+            q_norm in norm_text(r["author"]) or q_norm in norm_text(r["title"])
         ):
             return r, "inv"
     raise SystemExit(f"no match for {query or ref!r}")
@@ -183,7 +180,7 @@ def _slugify(text: str) -> str:
     text = text.lower()
     text = re.sub(r"[^a-z0-9]+", "-", text)
     text = text.strip("-")
-    return re.sub(r"-+", "-", text)
+    return text
 
 
 def _strip_subtitle(title: str) -> str:
@@ -335,9 +332,7 @@ def recommend(query: str, unread_only: bool = True, limit: int = 10) -> None:
 
 
 def annotations(query: str | None, ref: str | None) -> None:
-    from related_work.zotero import ZoteroClient
-
-    row, source = find(query, ref)
+    row, _ = find(query, ref)
     key = row.get("zotero_key")
     stem = Path(row["path"]).stem
 
@@ -345,15 +340,10 @@ def annotations(query: str | None, ref: str | None) -> None:
     if not client.is_available():
         raise SystemExit("Zotero local API is not running. Start Zotero to fetch annotations.")
 
-    # Share one library snapshot between key resolution and annotation lookup.
-    if not key:
-        items = client.get_all_library_items()
-        key = client.resolve_item_key(
-            path=row.get("path"), title=row.get("title"), items=items
-        )
-        anns = client.get_annotations_for_item(item_key=key, items=items)
-    else:
-        anns = client.get_annotations_for_item(item_key=key)
+    key = client.resolve_item_key(
+        zotero_key=key, path=row.get("path"), title=row.get("title")
+    )
+    anns = client.get_annotations_for_item(item_key=key)
     resolved_key = key or "unmatched"
     print(f"### Zotero annotations: {row.get('title') or stem} [{resolved_key}]\n")
     if not anns:
@@ -379,7 +369,7 @@ def scaffold(query: str | None, ref: str | None, force: bool = False, root: Path
     notes/papers/<slug>.md with the title, summary, and Zotero highlights
     if the library is running. Skips existing notes unless --force is given.
     """
-    row, source = find(query, ref)
+    row, _ = find(query, ref)
     slug = _make_slug(
         row.get("author") or "",
         row.get("year") or "",
@@ -398,15 +388,12 @@ def scaffold(query: str | None, ref: str | None, force: bool = False, root: Path
 
     client = ZoteroClient()
     if client.is_available():
-        key = row.get("zotero_key")
-        if not key:
-            items = client.get_all_library_items()
-            key = client.resolve_item_key(
-                path=row.get("path"), title=row.get("title"), items=items
-            )
-            anns = client.get_annotations_for_item(item_key=key, items=items)
-        else:
-            anns = client.get_annotations_for_item(item_key=key)
+        key = client.resolve_item_key(
+            zotero_key=row.get("zotero_key"),
+            path=row.get("path"),
+            title=row.get("title"),
+        )
+        anns = client.get_annotations_for_item(item_key=key)
     else:
         anns = None
 
@@ -439,7 +426,9 @@ def scaffold(query: str | None, ref: str | None, force: bool = False, root: Path
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
     for cmd in ("show", "mark"):
         c = sub.add_parser(cmd)
@@ -447,7 +436,7 @@ def main() -> None:
         c.add_argument("--ref")
         if cmd == "show":
             c.add_argument("--chars", type=int, default=1400)
-            c.add_argument("--root", type=Path, help="literature root (defaults to [tool.dqr-literature].lit_root in pyproject.toml)")
+            c.add_argument("--root", type=Path, help="literature root (defaults to LIT_ROOT/DQR_LIT_ROOT, local config, then pyproject.toml)")
     sub.add_parser("todo")
 
     rec = sub.add_parser("recommend", help="recommend papers by semantic similarity")
@@ -462,7 +451,7 @@ def main() -> None:
     sca = sub.add_parser("scaffold", help="generate a starter note from highlights + PDF summary")
     sca.add_argument("query", nargs="?", help="author or title search query")
     sca.add_argument("--ref", help="bibliography reference number")
-    sca.add_argument("--root", type=Path, help="literature root (defaults to [tool.dqr-literature].lit_root in pyproject.toml)")
+    sca.add_argument("--root", type=Path, help="literature root (defaults to LIT_ROOT/DQR_LIT_ROOT, local config, then pyproject.toml)")
     sca.add_argument("--force", action="store_true", help="overwrite existing note")
 
     a = ap.parse_args()

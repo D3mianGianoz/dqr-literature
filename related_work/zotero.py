@@ -1,4 +1,4 @@
-"""Zotero local API client for collections and PDF annotations.
+"""Zotero local API client for library items and PDF annotations.
 
 Connects to Zotero's local HTTP API (running on port 23119 by default)
 without requiring internet access or cloud API keys.
@@ -6,7 +6,6 @@ without requiring internet access or cloud API keys.
 Usage:
     client = ZoteroClient()
     if client.is_available():
-        collections = client.get_collections()
         annotations = client.get_annotations_for_item("KEY")
 """
 
@@ -41,36 +40,6 @@ class ZoteroClient:
             return True
         except (urllib.error.URLError, TimeoutError, OSError):
             return False
-
-    def get_collections(self) -> dict[str, dict[str, str]]:
-        """Return collection_key -> {'name': name, 'path': 'parent/name'}."""
-        try:
-            raw = self._request("collections")
-        except Exception:
-            return {}
-
-        by_key = {c["key"]: c.get("data", {}) for c in raw if "key" in c}
-
-        def _resolve_path(k: str, visited: set[str] | None = None) -> str:
-            visited = visited or set()
-            if k in visited or k not in by_key:
-                return by_key.get(k, {}).get("name", k)
-            visited.add(k)
-            data = by_key[k]
-            parent = data.get("parentCollection")
-            name = data.get("name", "")
-            if parent and parent in by_key:
-                return f"{_resolve_path(parent, visited)}/{name}"
-            return name
-
-        result = {}
-        for key, data in by_key.items():
-            result[key] = {
-                "name": data.get("name", ""),
-                "parent": data.get("parentCollection") or "",
-                "path": _resolve_path(key),
-            }
-        return result
 
     def get_all_library_items(self) -> list[dict[str, Any]]:
         """Retrieve all items using pyzotero if available, or paged urllib."""

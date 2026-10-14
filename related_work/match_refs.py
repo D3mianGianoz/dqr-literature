@@ -14,6 +14,8 @@ truncates the bibliographic citation.
 Usage:
     pdftotext paper.pdf /tmp/refs.txt
     uv run python -m related_work.match_refs --refs /tmp/refs.txt
+    uv run python -m related_work.match_refs --refs /tmp/refs.txt \\
+        --inventory /tmp/inventory.csv --out /tmp/matches.csv
 """
 
 import argparse
@@ -198,10 +200,22 @@ def match(
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--refs", type=Path, required=True, help="dumped bibliography text")
-    ap.add_argument("--inventory", type=Path, default=INVENTORY)
-    ap.add_argument("--out", type=Path, default=SOA)
+    ap.add_argument(
+        "--inventory",
+        type=Path,
+        default=INVENTORY,
+        help="paper inventory CSV (default: data/inventory.csv)",
+    )
+    ap.add_argument(
+        "--out",
+        type=Path,
+        default=SOA,
+        help="matched citations CSV (default: data/soa_citations.csv)",
+    )
     args = ap.parse_args()
 
     with args.inventory.open(encoding="utf-8") as fh:

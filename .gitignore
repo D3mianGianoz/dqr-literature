@@ -1,6 +1,7 @@
 .venv/
 __pycache__/
 *.pyc
+*.egg-info/
 .DS_Store
 uv.lock
 *.npy
@@ -11,4 +12,3 @@ ai_assisted_literature_review_enhancement_plan.md
 pyproject.local.toml
 .coverage
 *.npz
-

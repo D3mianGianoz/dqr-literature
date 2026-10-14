@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from related_work.zotero import ZoteroClient
 
@@ -8,21 +8,7 @@ class TestZoteroClient(unittest.TestCase):
     def test_offline_graceful_handling(self):
         client = ZoteroClient(base_url="http://127.0.0.1:99999/api")
         self.assertFalse(client.is_available())
-        self.assertEqual(client.get_collections(), {})
         self.assertEqual(client.get_annotations_for_item("NOKEY"), [])
-
-    @patch.object(ZoteroClient, "_request")
-    def test_collection_path_resolution(self, mock_request):
-        mock_request.return_value = [
-            {"key": "C1", "data": {"name": "PhD", "parentCollection": False}},
-            {"key": "C2", "data": {"name": "family", "parentCollection": "C1"}},
-            {"key": "C3", "data": {"name": "reconstruction", "parentCollection": "C2"}},
-        ]
-        client = ZoteroClient()
-        collections = client.get_collections()
-        self.assertIn("C3", collections)
-        self.assertEqual(collections["C3"]["path"], "PhD/family/reconstruction")
-        self.assertEqual(collections["C1"]["path"], "PhD")
 
     @patch.object(ZoteroClient, "get_all_library_items")
     def test_resolve_item_key_by_attachment_and_title(self, mock_items):

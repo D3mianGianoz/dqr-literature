@@ -44,4 +44,4 @@ These findings motivate task-specific evaluation and careful interpretation;
 they do not establish that a particular detector works on crane strain data.
 Project choices and status belong in the AUO study repository. Corpus and
 reading progress come from `data/inventory.csv` and `data/reading_log.csv`; use
-`uv run python -m related_work.papers todo` for current progress.
+`uv run papers todo` for current progress.
