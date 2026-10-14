@@ -86,7 +86,7 @@ class TestPapersCLI(unittest.TestCase):
             # Simulate the CLI path: annotations requires Zotero
             with self.assertRaises(SystemExit) as ctx:
                 with patch("related_work.papers.find", return_value=({"path": "Zpapers/2023/crane.pdf", "zotero_key": "", "title": "Crane"}, "inv")):
-                    papers_mod.annotations(query="crane", ref=None)
+                    papers_mod.annotations(query="crane", soa_ref=None)
             self.assertNotEqual(ctx.exception.code, 0)
 
 

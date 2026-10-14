@@ -17,7 +17,6 @@ class TestCorrectionsGuard(unittest.TestCase):
 
     def _run(
         self, lit, corr, out, zotero_items=(), zotero_local=False,
-        configured_root=None,
     ):
         with (
             patch.object(sys, "argv", [sys.argv[0]] + (["--zotero-local"] if zotero_local else [])),
@@ -25,9 +24,12 @@ class TestCorrectionsGuard(unittest.TestCase):
                 inventory,
                 CORRECTIONS=corr,
                 INVENTORY=out,
-                corpus_root=lambda root=None: lit,
-                _pyproject_lit_root=lambda: configured_root or lit,
-                _zotero_items=lambda: list(zotero_items),
+                corpus_root=lambda: lit,
+            ),
+            patch.object(
+                inventory.ZoteroClient,
+                "get_all_library_items",
+                return_value=list(zotero_items),
             ),
             contextlib.redirect_stdout(io.StringIO()),
             contextlib.redirect_stderr(io.StringIO()),
@@ -72,7 +74,7 @@ class TestCorrectionsGuard(unittest.TestCase):
             self.assertIsNotNone(msg)
             self.assertIn("references 1 path(s) no longer in the inventory", msg)
 
-    def test_alternate_root_does_not_validate_configured_corrections(self):
+    def test_current_root_validates_all_corrections(self):
         with TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             lit = tmp / "alternate"
@@ -83,10 +85,8 @@ class TestCorrectionsGuard(unittest.TestCase):
                 json.dumps({"old/removed.pdf": {"year": "2019"}}),
                 encoding="utf-8",
             )
-            msg = self._run(
-                lit, corr, tmp / "out.csv", configured_root=tmp / "configured"
-            )
-            self.assertIsNone(msg)
+            msg = self._run(lit, corr, tmp / "out.csv")
+            self.assertIn("references 1 path(s) no longer in the inventory", msg)
 
     def test_malformed_corrections_fail(self):
         with TemporaryDirectory() as tmp:

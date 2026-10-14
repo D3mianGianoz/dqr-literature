@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 import unicodedata
 
@@ -33,37 +32,26 @@ def inventory_path(path: str) -> str:
     return path.removeprefix("Literature/")
 
 
-def _pyproject_lit_root(config: Path | None = None) -> Path | None:
-    if config is None:
-        if env_val := (os.environ.get("LIT_ROOT") or os.environ.get("DQR_LIT_ROOT")):
-            return Path(env_val).expanduser()
-        local_cfg = REPO / "pyproject.local.toml"
-        if local_cfg.exists():
-            try:
-                with local_cfg.open("rb") as fh:
-                    data = _tomllib.load(fh)
-                if val := (data.get("tool", {}).get("dqr-literature", {}) or {}).get("lit_root"):
-                    return Path(val).expanduser()
-            except (FileNotFoundError, _tomllib.TOMLDecodeError):
-                pass
-        config = REPO / "pyproject.toml"
+def corpus_root() -> Path:
+    """Return the configured Literature directory."""
+    config = REPO / "pyproject.local.toml"
     try:
         with config.open("rb") as fh:
             data = _tomllib.load(fh)
-    except (FileNotFoundError, _tomllib.TOMLDecodeError):
-        return None
-    value = (data.get("tool", {}).get("dqr-literature", {}) or {}).get("lit_root")
-    if not value:
-        return None
-    return Path(value).expanduser()
-
-
-def corpus_root(root: Path | None = None, *, config: Path | None = None) -> Path:
-    if root is not None:
-        return root
-    if value := _pyproject_lit_root(config):
-        return value
-    raise SystemExit(
-        "Set [tool.dqr-literature].lit_root in pyproject.local.toml or pyproject.toml, "
-        "or set LIT_ROOT."
-    )
+    except FileNotFoundError as exc:
+        raise SystemExit(
+            f"Missing {config}; set [tool.dqr-literature].lit_root there."
+        ) from exc
+    except _tomllib.TOMLDecodeError as exc:
+        raise SystemExit(f"Invalid TOML in {config}: {exc}") from exc
+    tool = data.get("tool", {})
+    settings = tool.get("dqr-literature", {}) if isinstance(tool, dict) else None
+    value = settings.get("lit_root") if isinstance(settings, dict) else None
+    if not isinstance(value, str) or not value.strip():
+        raise SystemExit(f"Set [tool.dqr-literature].lit_root in {config}.")
+    root = Path(value).expanduser()
+    if not root.is_absolute():
+        root = REPO / root
+    if not root.is_dir():
+        raise SystemExit(f"Literature root is not an available directory: {root}")
+    return root

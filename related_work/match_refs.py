@@ -24,8 +24,7 @@ import os
 import re
 from pathlib import Path
 
-import spacy
-
+from related_work.common import get_nlp
 from related_work.config import INVENTORY, SOA
 
 ENTRY = re.compile(r"\n\[(\d+)\]\s*")
@@ -35,17 +34,6 @@ PAGE_FOOTER = re.compile(r"USES2.*?\d+\s*")
 SENTENCE = re.compile(r"(?<![A-Z])\.\s+")
 RANK = {"exact": 2, "exact:cited": 1, "weak": 0}
 FIELDNAMES = ["ref", "year", "surnames", "local", "method", "local_path", "citation"]
-
-_nlp = None
-
-
-def _get_nlp() -> spacy.language.Language:
-    global _nlp
-    if _nlp is None:
-        _nlp = spacy.load("en_core_web_md")
-    return _nlp
-
-
 
 def _surname_regex(head: str) -> list[str]:
     """Fallback surname extraction from an author segment using plain regex.
@@ -76,7 +64,7 @@ def _surname_ner(head: str) -> list[str]:
         chunk = chunk.strip()
         if not chunk:
             continue
-        doc = _get_nlp()(chunk)
+        doc = get_nlp()(chunk)
         last_ent = None
         for ent in doc.ents:
             if ent.label_ == "PERSON":
@@ -145,7 +133,7 @@ def match(
     year, sur, citation = entry
     words = title_tokens(citation)
     best, best_method, best_rank = None, "none", -1
-    nlp_model = _get_nlp()
+    nlp_model = get_nlp()
     cited_title = _title_segment(citation).lower()
     cited_doc = nlp_model(cited_title) if cited_title.strip() else None
 

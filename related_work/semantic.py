@@ -13,41 +13,32 @@ Usage:
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 from typing import Any
+import warnings
+import zipfile
 
 import numpy as np
-import spacy
 
+from related_work.common import get_nlp, load_csv
 from related_work.config import DATA, INVENTORY, READING_LOG
 
 CACHE_FILE = DATA / ".vector_cache.npz"
 
 
-def _get_nlp() -> spacy.language.Language:
-    return spacy.load("en_core_web_md", disable=["parser", "ner"])
-
-
-def _load_inventory(inventory_path: Path) -> list[dict[str, str]]:
-    if not inventory_path.exists():
-        return []
-    with inventory_path.open(encoding="utf-8") as fh:
-        return list(csv.DictReader(fh))
-
-
 def _load_read_keys(log_path: Path) -> set[str]:
-    if not log_path.exists():
-        return set()
-    with log_path.open(encoding="utf-8") as fh:
-        return {row["key"] for row in csv.DictReader(fh) if row.get("key")}
+    return {
+        row["key"]
+        for row in load_csv(log_path, missing_ok=True)
+        if row.get("key")
+    }
 
 
 def get_inventory_vectors(
     inventory_path: Path = INVENTORY, cache_path: Path | None = None
 ) -> tuple[list[dict[str, str]], np.ndarray]:
     """Return (rows, normalized_vector_matrix) with mtime-aware disk caching."""
-    rows = _load_inventory(inventory_path)
+    rows = load_csv(inventory_path)
     if not rows:
         return [], np.zeros((0, 300), dtype=np.float32)
 
@@ -58,15 +49,15 @@ def get_inventory_vectors(
 
     if cache_path is not None and cache_path.exists():
         try:
-            cached = np.load(cache_path)
-            if cached["mtime"] == current_mtime and len(cached["vecs"]) == len(rows):
-                return rows, cached["vecs"]
-        except Exception:
-            pass  # Recompute if cache is corrupted or incompatible
+            with np.load(cache_path) as cached:
+                if cached["mtime"] == current_mtime and len(cached["vecs"]) == len(rows):
+                    return rows, cached["vecs"]
+        except (OSError, ValueError, KeyError, EOFError, zipfile.BadZipFile) as exc:
+            warnings.warn(f"Recomputing invalid vector cache {cache_path}: {exc}")
 
-    nlp = _get_nlp()
+    nlp = get_nlp()
     texts = [f"{r.get('title', '')}. {r.get('abstract', '')}" for r in rows]
-    docs = list(nlp.pipe(texts, batch_size=64))
+    docs = list(nlp.pipe(texts, batch_size=64, disable=["parser", "ner"]))
 
     raw_vecs = np.array([doc.vector for doc in docs], dtype=np.float32)
     norms = np.linalg.norm(raw_vecs, axis=1, keepdims=True)
@@ -76,8 +67,8 @@ def get_inventory_vectors(
     if cache_path is not None:
         try:
             np.savez(cache_path, vecs=normed_vecs, mtime=current_mtime)
-        except Exception:
-            pass  # Non-fatal if cache cannot be written
+        except OSError as exc:
+            warnings.warn(f"Could not write vector cache {cache_path}: {exc}")
 
     return rows, normed_vecs
 
@@ -97,8 +88,8 @@ def rank_inventory(
         return []
 
     read_keys = _load_read_keys(reading_log_path)
-    nlp = _get_nlp()
-    q_doc = nlp(query)
+    nlp = get_nlp()
+    q_doc = nlp(query, disable=["parser", "ner"])
     q_vec = q_doc.vector.astype(np.float32)
     q_norm = np.linalg.norm(q_vec)
     if q_norm == 0:
