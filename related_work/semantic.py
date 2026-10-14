@@ -13,41 +13,32 @@ Usage:
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 from typing import Any
+import warnings
+import zipfile
 
 import numpy as np
-import spacy
 
-from related_work.config import DATA, INVENTORY, READING_LOG
+from related_work.common import get_nlp, load_csv
+from related_work.config import DATA, INVENTORY, READING_LOG, clean_alphanumeric
 
 CACHE_FILE = DATA / ".vector_cache.npz"
 
 
-def _get_nlp() -> spacy.language.Language:
-    return spacy.load("en_core_web_md", disable=["parser", "ner"])
-
-
-def _load_inventory(inventory_path: Path) -> list[dict[str, str]]:
-    if not inventory_path.exists():
-        return []
-    with inventory_path.open(encoding="utf-8") as fh:
-        return list(csv.DictReader(fh))
-
-
 def _load_read_keys(log_path: Path) -> set[str]:
-    if not log_path.exists():
-        return set()
-    with log_path.open(encoding="utf-8") as fh:
-        return {row["key"] for row in csv.DictReader(fh) if row.get("key")}
+    return {
+        row["key"]
+        for row in load_csv(log_path, missing_ok=True)
+        if row.get("key")
+    }
 
 
 def get_inventory_vectors(
     inventory_path: Path = INVENTORY, cache_path: Path | None = None
 ) -> tuple[list[dict[str, str]], np.ndarray]:
     """Return (rows, normalized_vector_matrix) with mtime-aware disk caching."""
-    rows = _load_inventory(inventory_path)
+    rows = load_csv(inventory_path)
     if not rows:
         return [], np.zeros((0, 300), dtype=np.float32)
 
@@ -58,15 +49,15 @@ def get_inventory_vectors(
 
     if cache_path is not None and cache_path.exists():
         try:
-            cached = np.load(cache_path)
-            if cached["mtime"] == current_mtime and len(cached["vecs"]) == len(rows):
-                return rows, cached["vecs"]
-        except Exception:
-            pass  # Recompute if cache is corrupted or incompatible
+            with np.load(cache_path) as cached:
+                if cached["mtime"] == current_mtime and len(cached["vecs"]) == len(rows):
+                    return rows, cached["vecs"]
+        except (OSError, ValueError, KeyError, EOFError, zipfile.BadZipFile) as exc:
+            warnings.warn(f"Recomputing invalid vector cache {cache_path}: {exc}")
 
-    nlp = _get_nlp()
+    nlp = get_nlp()
     texts = [f"{r.get('title', '')}. {r.get('abstract', '')}" for r in rows]
-    docs = list(nlp.pipe(texts, batch_size=64))
+    docs = list(nlp.pipe(texts, batch_size=64, disable=["parser", "ner"]))
 
     raw_vecs = np.array([doc.vector for doc in docs], dtype=np.float32)
     norms = np.linalg.norm(raw_vecs, axis=1, keepdims=True)
@@ -76,8 +67,8 @@ def get_inventory_vectors(
     if cache_path is not None:
         try:
             np.savez(cache_path, vecs=normed_vecs, mtime=current_mtime)
-        except Exception:
-            pass  # Non-fatal if cache cannot be written
+        except OSError as exc:
+            warnings.warn(f"Could not write vector cache {cache_path}: {exc}")
 
     return rows, normed_vecs
 
@@ -91,28 +82,48 @@ def rank_inventory(
     reading_log_path: Path = READING_LOG,
     cache_path: Path | None = None,
 ) -> list[dict[str, Any]]:
-    """Rank inventory entries by semantic similarity to the query string."""
+    """Rank by semantic similarity, boosted by exact title and abstract terms."""
     rows, matrix = get_inventory_vectors(inventory_path, cache_path=cache_path)
     if len(rows) == 0:
         return []
 
     read_keys = _load_read_keys(reading_log_path)
-    nlp = _get_nlp()
-    q_doc = nlp(query)
+    nlp = get_nlp()
+    q_doc = nlp(query, disable=["parser", "ner"])
     q_vec = q_doc.vector.astype(np.float32)
     q_norm = np.linalg.norm(q_vec)
     if q_norm == 0:
         return []
     q_normed = q_vec / q_norm
+    query_terms = {
+        term
+        for token in q_doc
+        if token.is_alpha and not token.is_stop
+        for term in clean_alphanumeric(token.text).split()
+    }
 
-    scores = matrix @ q_normed
+    semantic_scores = matrix @ q_normed
 
     ranked: list[dict[str, Any]] = []
-    for score, row in zip(scores, rows):
+    for semantic_score, row in zip(semantic_scores, rows):
         stem = Path(row["path"]).stem
         is_read = stem in read_keys
         if unread_only and is_read:
             continue
+        if query_terms:
+            title_terms = set(clean_alphanumeric(row.get("title", "")).split())
+            paper_terms = set(
+                clean_alphanumeric(
+                    f"{row.get('title', '')} {row.get('abstract', '')}"
+                ).split()
+            )
+            title_coverage = len(query_terms & title_terms) / len(query_terms)
+            paper_coverage = len(query_terms & paper_terms) / len(query_terms)
+            keyword_score = 0.75 * title_coverage + 0.25 * paper_coverage
+            # ponytail: fixed 75/25 blend; tune only against a judged query set.
+            score = 0.75 * max(float(semantic_score), 0.0) + 0.25 * keyword_score
+        else:
+            score = float(semantic_score)
         ranked.append(
             {
                 "score": float(score),

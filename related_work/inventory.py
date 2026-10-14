@@ -5,8 +5,7 @@ and writes a CSV index. Re-runnable as the collection grows.
 
 Usage:
     uv run python -m related_work.inventory
-    uv run python -m related_work.inventory \\
-        --root /path/to/Literature --out /tmp/inventory.csv
+    uv run python -m related_work.inventory --out /tmp/inventory.csv
     uv run python -m related_work.inventory --zotero-local
 """
 
@@ -20,10 +19,10 @@ from pathlib import Path
 from related_work.config import (
     CORRECTIONS,
     INVENTORY,
-    _pyproject_lit_root,
     clean_alphanumeric,
     corpus_root,
 )
+from related_work.zotero import ZoteroClient
 
 YEAR = re.compile(r"\b(19|20)\d{2}\b")
 
@@ -161,26 +160,9 @@ def enrich(
     return enriched, sum(bool(row["zotero_key"]) for row in enriched), ambiguous
 
 
-def _zotero_items() -> list[dict]:
-    try:
-        from pyzotero import Zotero
-    except ImportError as exc:
-        raise SystemExit(
-            "Install Zotero support with "
-            "`uv sync --extra zotero`."
-        ) from exc
-    zotero = Zotero("0", "user", local=True)
-    return zotero.everything(zotero.items())
-
-
 def main() -> None:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    ap.add_argument(
-        "--root",
-        type=Path,
-        help="Literature root (defaults to LIT_ROOT/DQR_LIT_ROOT, local config, then pyproject.toml)",
     )
     ap.add_argument(
         "--out", type=Path, help="inventory CSV output (default: data/inventory.csv)"
@@ -191,16 +173,13 @@ def main() -> None:
         help="enrich the PDF inventory from the running local Zotero library",
     )
     args = ap.parse_args()
-    root = corpus_root(args.root)
-    configured_root = _pyproject_lit_root()
-    is_configured_root = (
-        configured_root is not None
-        and root.resolve() == configured_root.resolve()
-    )
+    root = corpus_root()
     out = args.out or INVENTORY
 
     overrides = load_overrides()
 
+    if not root.is_dir():
+        raise SystemExit(f"Literature root is not an available directory: {root}")
     rows = []
     for paper in sorted(root.rglob("*.pdf")):
         year, author, title = parse(paper)
@@ -212,9 +191,13 @@ def main() -> None:
                 "path": str(paper.relative_to(root)),
             }
         )
+    if not rows:
+        raise SystemExit(f"No PDFs found under {root}; inventory was not changed.")
     matched = 0
     if args.zotero_local:
-        rows, matched, ambiguous = enrich(rows, _zotero_items())
+        rows, matched, ambiguous = enrich(
+            rows, ZoteroClient().get_all_library_items()
+        )
     elif out.resolve() == INVENTORY.resolve() and out.exists():
         with out.open(encoding="utf-8", newline="") as fh:
             previous = {row["path"]: row for row in csv.DictReader(fh)}
@@ -230,8 +213,7 @@ def main() -> None:
 
     apply_overrides(rows, overrides)
 
-    # Corrections belong to the configured corpus, not an explicitly alternate root.
-    if overrides and is_configured_root:
+    if overrides:
         # Every correction must still exist in the inventory (no stale entries).
         orphaned = sorted(
             p for p in overrides if p not in {r["path"] for r in rows}

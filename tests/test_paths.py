@@ -109,26 +109,23 @@ class TestToolingCompatibility(unittest.TestCase):
         self.assertTrue(all(inventory_path(path) in inventory_paths for path in local_paths))
 
     def test_inventory_writer_returns_relative_paths(self):
+        from related_work import config, inventory
+
         tmp = Path(tempfile.mkdtemp())
         lit = tmp / "Literature"
         lit.mkdir(parents=True)
         lit.joinpath("2020 Author Title.pdf").write_text("ok")
-        out = tmp / "out.csv"
-        r = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "related_work.inventory",
-                "--root",
-                str(lit),
-                "--out",
-                str(out),
-            ],
-            cwd=str(REPO),
-            capture_output=True,
-            text=True,
+        (tmp / "pyproject.local.toml").write_text(
+            '[tool.dqr-literature]\nlit_root = "Literature"\n', encoding="utf-8"
         )
-        self.assertEqual(r.returncode, 0, r.stderr)
+        out = tmp / "out.csv"
+        with (
+            patch.object(config, "REPO", tmp),
+            patch.object(inventory, "INVENTORY", tmp / "inventory.csv"),
+            patch.object(inventory, "CORRECTIONS", tmp / "corrections.json"),
+            patch("sys.argv", ["inventory", "--out", str(out)]),
+        ):
+            inventory.main()
         with out.open() as stream:
             row = next(csv.DictReader(stream))
         self.assertEqual(
@@ -139,33 +136,51 @@ class TestToolingCompatibility(unittest.TestCase):
         self.assertFalse(row["path"].startswith("/"))
 
 
-class TestCorpusRootPrecedence(unittest.TestCase):
-    def test_environment_overrides_local_and_tracked_configuration(self):
+class TestCorpusRootConfiguration(unittest.TestCase):
+    def test_local_configuration_is_the_only_root_source(self):
         from related_work import config
 
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
+            (repo / "Literature").mkdir()
             (repo / "pyproject.local.toml").write_text(
-                '[tool.dqr-literature]\nlit_root = "/local"\n', encoding="utf-8"
+                '[tool.dqr-literature]\nlit_root = "Literature"\n', encoding="utf-8"
             )
             (repo / "pyproject.toml").write_text(
                 '[tool.dqr-literature]\nlit_root = "/tracked"\n', encoding="utf-8"
             )
             with patch.object(config, "REPO", repo), patch.dict(
-                "os.environ", {}, clear=True
+                "os.environ", {"LIT_ROOT": "/ignored", "DQR_LIT_ROOT": "/ignored"},
+                clear=False,
             ):
-                self.assertEqual(config._pyproject_lit_root(), Path("/local"))
-                with patch.dict("os.environ", {"DQR_LIT_ROOT": "/env"}):
-                    self.assertEqual(config._pyproject_lit_root(), Path("/env"))
-                with patch.dict(
-                    "os.environ", {"LIT_ROOT": "/preferred", "DQR_LIT_ROOT": "/env"}
-                ):
-                    self.assertEqual(
-                        config._pyproject_lit_root(), Path("/preferred")
-                    )
-                self.assertEqual(
-                    config.corpus_root(Path("/explicit")), Path("/explicit")
-                )
+                self.assertEqual(config.corpus_root(), repo / "Literature")
+
+    def test_missing_or_malformed_root_configuration_fails_clearly(self):
+        from related_work import config
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            local = repo / "pyproject.local.toml"
+            with patch.object(config, "REPO", repo):
+                with self.assertRaisesRegex(SystemExit, "Missing"):
+                    config.corpus_root()
+                local.write_text("[tool\n", encoding="utf-8")
+                with self.assertRaisesRegex(SystemExit, "Invalid TOML"):
+                    config.corpus_root()
+
+    def test_tracked_configuration_is_not_a_fallback(self):
+        from related_work import config
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "Literature").mkdir()
+            (repo / "pyproject.toml").write_text(
+                '[tool.dqr-literature]\nlit_root = "Literature"\n',
+                encoding="utf-8",
+            )
+            with patch.object(config, "REPO", repo):
+                with self.assertRaisesRegex(SystemExit, "pyproject.local.toml"):
+                    config.corpus_root()
 
 
 class TestSpacyRelatedWork(unittest.TestCase):
@@ -231,6 +246,7 @@ class TestSpacyRelatedWork(unittest.TestCase):
             "Abstract: This paper studies anomaly detection in streaming sensor data.",
             "We propose a simple baseline and compare it against existing methods.",
             "Our results show improvements over the state of the art.",
+            "Keywords Time series, anomaly detection, evaluation.",
             "Introduction: Background and motivation for the study follow here.",
         ]
         abstract = _extract_abstract(sentences)
@@ -272,12 +288,13 @@ class TestSpacyRelatedWork(unittest.TestCase):
         import unittest.mock
         from related_work.papers import show
         fake_row = {"path": "tests/assets/test_abstract.pdf", "year": "2025"}
-        with unittest.mock.patch("related_work.papers.find", return_value=(fake_row, "test")):
+        with unittest.mock.patch("related_work.papers.find", return_value=(fake_row, "test")), \
+             unittest.mock.patch("related_work.papers.corpus_root", return_value=REPO):
             out = io.StringIO()
             old = sys.stdout
             sys.stdout = out
             try:
-                show("test", None, 1000, REPO)
+                show("test", None, 1000)
             finally:
                 sys.stdout = old
         body = out.getvalue()

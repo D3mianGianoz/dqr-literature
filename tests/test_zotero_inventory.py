@@ -3,17 +3,16 @@ import csv
 import io
 import sys
 import tempfile
-import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from related_work.inventory import _zotero_items, enrich, main
-from related_work.config import corpus_root
+from related_work.inventory import enrich, main
+from related_work.zotero import ZoteroClient
 
 
 class TestZoteroInventory(unittest.TestCase):
-    def test_cli_defaults_to_pyproject_and_repository_inventory_path(self):
+    def test_cli_uses_configured_root_and_repository_inventory_path(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / "Literature"
             root.mkdir()
@@ -22,6 +21,7 @@ class TestZoteroInventory(unittest.TestCase):
             with (
                 patch("related_work.inventory.corpus_root", return_value=root),
                 patch("related_work.inventory.INVENTORY", output),
+                patch("related_work.inventory.CORRECTIONS", Path(temp) / "corrections.json"),
                 patch("sys.argv", ["inventory"]),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
@@ -69,6 +69,7 @@ class TestZoteroInventory(unittest.TestCase):
             with (
                 patch("related_work.inventory.corpus_root", return_value=root),
                 patch("related_work.inventory.INVENTORY", output),
+                patch("related_work.inventory.CORRECTIONS", Path(temp) / "corrections.json"),
                 patch("sys.argv", ["inventory"]),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
@@ -110,11 +111,15 @@ class TestZoteroInventory(unittest.TestCase):
             with (
                 patch("related_work.inventory.corpus_root", return_value=root),
                 patch("related_work.inventory.INVENTORY", output),
-                patch("related_work.inventory._zotero_items", return_value=items),
+                patch("related_work.inventory.CORRECTIONS", Path(temp) / "corrections.json"),
+                patch.object(
+                    ZoteroClient, "get_all_library_items", return_value=items
+                ) as get_items,
                 patch("sys.argv", ["inventory", "--zotero-local"]),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 main()
+            get_items.assert_called_once_with()
 
             with output.open(encoding="utf-8", newline="") as stream:
                 reader = csv.DictReader(stream)
@@ -248,29 +253,21 @@ class TestZoteroInventory(unittest.TestCase):
         self.assertEqual((matched, ambiguous), (0, 0))
         self.assertEqual(enriched[0]["zotero_key"], "")
 
-    def test_local_client_is_read_only_and_uses_all_items(self):
-        calls = []
-
-        class FakeZotero:
-            def __init__(self, *args, **kwargs):
-                calls.append((args, kwargs))
-
-            def items(self):
-                calls.append("items")
-                return ["first-page"]
-
-            def everything(self, items):
-                calls.append(("everything", items))
-                return ["all-items"]
-
-        module = types.ModuleType("pyzotero")
-        module.Zotero = FakeZotero
-        with patch.dict(sys.modules, {"pyzotero": module}):
-            items = _zotero_items()
-
-        self.assertEqual(items, ["all-items"])
-        self.assertEqual(calls[0], (("0", "user"), {"local": True}))
-        self.assertEqual(calls[1:], ["items", ("everything", ["first-page"])])
+    def test_empty_scan_does_not_replace_existing_inventory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "Literature"
+            root.mkdir()
+            output = Path(temp) / "inventory.csv"
+            output.write_text("existing inventory\n", encoding="utf-8")
+            with (
+                patch("related_work.inventory.corpus_root", return_value=root),
+                patch("related_work.inventory.INVENTORY", output),
+                patch("related_work.inventory.CORRECTIONS", Path(temp) / "corrections.json"),
+                patch("sys.argv", ["inventory"]),
+            ):
+                with self.assertRaisesRegex(SystemExit, "No PDFs found"):
+                    main()
+            self.assertEqual(output.read_text(encoding="utf-8"), "existing inventory\n")
 
 
 if __name__ == "__main__":

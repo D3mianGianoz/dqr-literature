@@ -36,35 +36,31 @@ class ZoteroClient:
     def is_available(self) -> bool:
         """Return True if local Zotero is running and responding."""
         try:
-            self._request("collections?limit=1", timeout=1.0)
-            return True
+            response = self._request("collections?limit=1", timeout=1.0)
         except (urllib.error.URLError, TimeoutError, OSError):
             return False
+        if not isinstance(response, list):
+            raise SystemExit("Invalid response from the Zotero local API.")
+        return True
 
     def get_all_library_items(self) -> list[dict[str, Any]]:
-        """Retrieve all items using pyzotero if available, or paged urllib."""
-        try:
-            from pyzotero import Zotero  # type: ignore
-
-            z = Zotero("0", "user", local=True)
-            return z.everything(z.items())
-        except Exception:
-            # Paged fallback via urllib
-            items: list[dict[str, Any]] = []
-            start = 0
-            limit = 100
-            while True:
-                try:
-                    chunk = self._request(f"items?start={start}&limit={limit}")
-                except Exception:
-                    break
-                if not chunk:
-                    break
-                items.extend(chunk)
-                if len(chunk) < limit:
-                    break
-                start += limit
-            return items
+        """Fetch the complete local library or fail rather than return a partial snapshot."""
+        items: list[dict[str, Any]] = []
+        start = 0
+        limit = 100
+        while True:
+            chunk = self._request(f"items?start={start}&limit={limit}")
+            if not isinstance(chunk, list) or any(
+                not isinstance(item, dict)
+                or not isinstance(item.get("key"), str)
+                or not isinstance(item.get("data"), dict)
+                for item in chunk
+            ):
+                raise SystemExit(f"Invalid Zotero items response at offset {start}.")
+            items.extend(chunk)
+            if len(chunk) < limit:
+                return items
+            start += limit
 
     def get_annotations_by_top_item(
         self, items: list[dict[str, Any]] | None = None
@@ -118,9 +114,6 @@ class ZoteroClient:
         Pass *items* to reuse an already-fetched library snapshot and avoid a
         redundant round-trip to Zotero.
         """
-        if zotero_key:
-            return zotero_key
-
         if items is None:
             if self._library_cache is not None:
                 items = self._library_cache
@@ -128,26 +121,45 @@ class ZoteroClient:
                 items = self.get_all_library_items()
                 self._library_cache = items
 
+        if zotero_key:
+            if any(item.get("key") == zotero_key for item in items):
+                return zotero_key
+            raise SystemExit(f"Zotero item {zotero_key} was not found in the library.")
+
         if path:
             target_name = clean_alphanumeric(Path(path).stem)
+            matches = set()
             for item in items:
                 d = item.get("data", {})
                 if d.get("itemType") == "attachment" and d.get("parentItem"):
                     fn = d.get("filename") or d.get("path", "")
                     if fn and clean_alphanumeric(Path(fn).stem) == target_name:
-                        return d["parentItem"]
+                        matches.add(d["parentItem"])
+            if len(matches) == 1:
+                return next(iter(matches))
+            if len(matches) > 1:
+                raise SystemExit(f"Multiple Zotero items match attachment {path!s}.")
 
         if title:
             target_title = clean_alphanumeric(title)
+            matches = set()
             for item in items:
                 d = item.get("data", {})
                 if d.get("itemType") not in {"attachment", "note", "annotation"}:
                     t = clean_alphanumeric(d.get("title", ""))
                     if t and (
                         target_title == t
-                        or (min(len(target_title), len(t)) > 20 and (target_title in t or t in target_title))
+                        or (
+                            min(len(target_title), len(t)) > 20
+                            and (target_title in t or t in target_title)
+                        )
                     ):
-                        return item.get("key")
+                        if item.get("key"):
+                            matches.add(item["key"])
+            if len(matches) == 1:
+                return next(iter(matches))
+            if len(matches) > 1:
+                raise SystemExit(f"Multiple Zotero items match title {title!r}.")
 
         return None
 

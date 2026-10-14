@@ -10,11 +10,6 @@ dependencies = [
 [project.scripts]
 papers = "related_work.papers:main"
 
-[project.optional-dependencies]
-zotero = [
-    "pyzotero>=1.15.2",
-]
-
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"

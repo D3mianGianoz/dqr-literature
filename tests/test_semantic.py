@@ -16,7 +16,8 @@ class TestSemanticRanking(unittest.TestCase):
             "year,author,title,path,zotero_key,abstract\n"
             "2023,Alice Smith,Overhead Crane Sensor Fault Detection and Strain Monitoring,Zpapers/2023/crane.pdf,K1,Monitors industrial crane strain gauges for drift and spikes.\n"
             "2021,Bob Jones,Cooking Recipes with Traditional Italian Pasta,Books/cooking.pdf,K2,A complete guide to boiling pasta and tomato sauce.\n"
-            "2022,Carol White,Time Series Anomaly Detection Benchmark in Sensors,Zpapers/2022/benchmark.pdf,K3,Comprehensive evaluation of outlier detectors on sensor time series.\n",
+            "2022,Carol White,Time Series Anomaly Detection Benchmark in Sensors,Zpapers/2022/benchmark.pdf,K3,Comprehensive evaluation of outlier detectors on sensor time series.\n"
+            "2024,Erin Davis,Strain Gauges in Bridge Monitoring,Zpapers/2024/strain-gauges.pdf,K4,\n",
             encoding="utf-8",
         )
 
@@ -34,7 +35,7 @@ class TestSemanticRanking(unittest.TestCase):
             inventory_path=self.inv,
             reading_log_path=self.readlog,
         )
-        self.assertEqual(len(results), 3)
+        self.assertEqual(len(results), 4)
         # Crane paper should be top ranked
         self.assertEqual(results[0]["key"], "crane")
         # Cooking paper should be last
@@ -53,6 +54,16 @@ class TestSemanticRanking(unittest.TestCase):
         self.assertNotIn("crane", keys)
         self.assertIn("benchmark", keys)
         self.assertIn("cooking", keys)
+
+    def test_exact_title_terms_boost_relevant_recommendation(self):
+        results = rank_inventory(
+            "strain gauges",
+            unread_only=False,
+            inventory_path=self.inv,
+            reading_log_path=self.readlog,
+            cache_path=self.tmp / "strain-cache.npz",
+        )
+        self.assertEqual(results[0]["key"], "strain-gauges")
 
     def test_cache_save_and_reload(self):
         cache_file = self.tmp / "test_cache.npz"
@@ -86,7 +97,7 @@ class TestPapersCLI(unittest.TestCase):
             # Simulate the CLI path: annotations requires Zotero
             with self.assertRaises(SystemExit) as ctx:
                 with patch("related_work.papers.find", return_value=({"path": "Zpapers/2023/crane.pdf", "zotero_key": "", "title": "Crane"}, "inv")):
-                    papers_mod.annotations(query="crane", ref=None)
+                    papers_mod.annotations(query="crane", soa_ref=None)
             self.assertNotEqual(ctx.exception.code, 0)
 
 

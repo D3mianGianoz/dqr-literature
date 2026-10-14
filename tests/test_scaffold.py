@@ -18,18 +18,8 @@ class TestScaffold(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
         self.assertIn('    uv run papers show "metric maze" --chars 500\n', r.stdout)
 
-    def test_short_papers_command(self):
-        r = subprocess.run(
-            ["uv", "run", "papers", "todo"],
-            capture_output=True,
-            text=True,
-            cwd=Path(__file__).parent.parent,
-        )
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("Logged as read:", r.stdout)
-
     def test_scaffold_subcommand_registered(self):
-        """The scaffold subcommand is registered and accepts --force / --ref."""
+        """The scaffold command exposes --force and the explicit --soa-ref."""
         r = subprocess.run(
             [sys.executable, "-m", "related_work.papers", "scaffold", "--help"],
             capture_output=True,
@@ -39,19 +29,22 @@ class TestScaffold(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
         self.assertIn("scaffold", r.stdout)
         self.assertIn("--force", r.stdout)
-        self.assertIn("--root", r.stdout)
+        self.assertIn("--soa-ref", r.stdout)
+        self.assertNotIn("--root", r.stdout)
 
-    def test_scaffold_cli_skips_existing_note(self):
-        """Existing note files are not overwritten without --force."""
-        r = subprocess.run(
-            [sys.executable, "-m", "related_work.papers", "scaffold", "donne and davis"],
-            capture_output=True,
-            text=True,
-            cwd=Path(__file__).parent.parent,
-        )
-        self.assertEqual(r.returncode, 0)
-        self.assertIn("already exists", r.stdout)
-        self.assertNotIn("wrote:", r.stdout)
+    def test_old_or_conflicting_selectors_are_rejected(self):
+        for args in (
+            ["show", "--ref", "20"],
+            ["show", "metric maze", "--soa-ref", "20"],
+        ):
+            with self.subTest(args=args):
+                result = subprocess.run(
+                    [sys.executable, "-m", "related_work.papers", *args],
+                    capture_output=True,
+                    text=True,
+                    cwd=Path(__file__).parent.parent,
+                )
+                self.assertNotEqual(result.returncode, 0)
 
     def test_scaffold_offline_graceful(self):
         """With Zotero down, scaffold still writes a note with a stub comment."""
@@ -68,15 +61,16 @@ class TestScaffold(unittest.TestCase):
         }
         with patch.object(p, "NOTES", notes), \
              patch.object(p, "find", return_value=(row, "inv")), \
-             patch.object(p, "_extract_paper_body", return_value="A summary of the paper."), \
+             patch.object(p, "_paper_summary", return_value=("A summary of the paper.", "Abstract")), \
              patch.object(p, "ZoteroClient") as mock_client_class:
             mock_client = mock_client_class.return_value
             mock_client.is_available.return_value = False
-            p.scaffold(query="crane", ref=None, force=True, root=Path("."))
+            p.scaffold(query="crane", soa_ref=None, force=True)
         out = notes / "smith-2023-overhead-crane-fault-detection.md"
         self.assertTrue(out.exists())
         content = out.read_text()
         self.assertIn("# Alice Smith (2023) \u2014 Overhead Crane Fault Detection", content)
+        self.assertIn("> **Abstract**", content)
         self.assertIn("> A summary of the paper.", content)
         self.assertIn("## Zotero highlights", content)
         self.assertIn("<!-- Zotero unavailable \u2014 add highlights manually -->", content)
@@ -115,12 +109,13 @@ class TestScaffold(unittest.TestCase):
         ]
         with patch.object(p, "NOTES", notes), \
              patch.object(p, "find", return_value=(row, "inv")), \
-             patch.object(p, "_extract_paper_body", return_value="A summary."), \
+             patch.object(p, "_paper_summary", return_value=("A summary.", "Abstract")), \
              patch.object(p, "ZoteroClient") as mock_client_class:
             mock_client = mock_client_class.return_value
             mock_client.is_available.return_value = True
+            mock_client.get_all_library_items.return_value = [{"key": "K1", "data": {}}]
             mock_client.get_annotations_for_item.return_value = annotations
-            p.scaffold(query="crane", ref=None, force=True, root=Path("."))
+            p.scaffold(query="crane", soa_ref=None, force=True)
         out = notes / "smith-2023-overhead-crane-fault-detection.md"
         self.assertTrue(out.exists())
         content = out.read_text()
@@ -153,9 +148,9 @@ class TestScaffold(unittest.TestCase):
         }
         with patch.object(p, "NOTES", notes), \
              patch.object(p, "find", return_value=(row, "inv")), \
-             patch.object(p, "_extract_paper_body") as extract, \
+             patch.object(p, "_paper_summary") as extract, \
              patch.object(p, "corpus_root") as corpus_root:
-            p.scaffold(query="test", ref=None)
+            p.scaffold(query="test", soa_ref=None)
         extract.assert_not_called()
         corpus_root.assert_not_called()
         self.assertEqual(out.read_text(), "old content\n")
@@ -196,12 +191,11 @@ class TestScaffold(unittest.TestCase):
         client = ZoteroClient()
         with patch.object(p, "NOTES", notes), \
              patch.object(p, "find", return_value=(row, "inv")), \
-             patch.object(p, "_extract_paper_body", return_value="Summary."), \
-             patch.object(p, "corpus_root", return_value=Path(".")), \
+             patch.object(p, "_paper_summary", return_value=("Summary.", "Extracted summary")), \
              patch.object(client, "is_available", return_value=True), \
              patch.object(client, "get_all_library_items", return_value=snapshot) as get_items, \
              patch.object(p, "ZoteroClient", return_value=client):
-            p.scaffold(query="test", ref=None, force=True)
+            p.scaffold(query="test", soa_ref=None, force=True)
         get_items.assert_called_once_with()
         content = (notes / "author-2020-x.md").read_text(encoding="utf-8")
         self.assertIn('"useful result"', content)
@@ -222,7 +216,7 @@ class TestScaffold(unittest.TestCase):
              patch.object(client, "get_all_library_items", return_value=snapshot) as get_items, \
              patch.object(p, "ZoteroClient", return_value=client), \
              redirect_stdout(output):
-            p.annotations(query="X", ref=None)
+            p.annotations(query="X", soa_ref=None)
         get_items.assert_called_once_with()
         self.assertIn("No annotations found", output.getvalue())
 
@@ -286,7 +280,7 @@ class TestSlugGeneration(unittest.TestCase):
         from related_work import papers as p
         with self.assertRaises(SystemExit) as ctx:
             p.find(None, None)
-        self.assertIn("Provide a query string or --ref.", str(ctx.exception))
+        self.assertIn("Provide either a query or --soa-ref.", str(ctx.exception))
 
 
 if __name__ == "__main__":

@@ -29,7 +29,7 @@ uv sync
 uv run python -m spacy download en_core_web_md
 ```
 
-Configure the Literature corpus root in ignored `pyproject.local.toml` under
+Configure the only Literature corpus root in ignored `pyproject.local.toml` under
 `[tool.dqr-literature]`:
 
 ```toml
@@ -37,14 +37,15 @@ Configure the Literature corpus root in ignored `pyproject.local.toml` under
 lit_root = "/path/to/Literature"
 ```
 
-Commands read the corpus root automatically. Resolution order is `--root`,
-`LIT_ROOT` (or `DQR_LIT_ROOT`), `pyproject.local.toml`, then `pyproject.toml`.
-The local file is ignored by Git; use it for machine-specific paths.
+Commands that need PDFs read this setting automatically. The local file is
+ignored by Git; use it for machine-specific paths. Relative paths are resolved
+from the repository root. There are no `--root` or environment-variable
+overrides.
 There is one canonical inventory:
 `data/inventory.csv`, with `year,author,title,path,zotero_key,abstract`
 columns. Paths are relative to the Literature root. Bibliography and
 reading-log files also default to their repository paths under `data/`;
-supported `--root`, `--out`, and `--inventory` options can override defaults.
+`--out` and `--inventory` can override output and inventory CSV paths.
 `pdftotext` must be installed and available on `PATH`.
 
 ## Inventory and bibliography
@@ -83,9 +84,14 @@ uv run papers annotations "donne and davis"
 uv run papers scaffold "donne and davis"
 ```
 
-Use `show --ref NUMBER` to select a bibliography reference. `recommend` ranks
-unread papers by spaCy semantic vector similarity to a natural language query
-(pass `--all` to include read papers). `annotations` fetches highlights,
+Queries search the inventory by author/title. Ambiguous and suggested matches
+require an explicit terminal selection; non-interactive calls fail safely.
+Paper commands accept `--soa-ref NUMBER` for a legacy reference in
+`data/soa_citations.csv`. `todo` shows the 10 newest unread papers by default;
+filter with author/title terms, adjust `--limit`, or use `--limit 0` for all.
+It labels associated SoA numbers as legacy references. `recommend` ranks unread
+papers using both spaCy semantic similarity and exact title/abstract term
+matches (pass `--all` to include read papers). `annotations` fetches highlights,
 underlines, and notes directly from the local Zotero API for the paper.
 `scaffold` creates a starter paper note from the PDF summary and Zotero
 highlights; pass `--force` to overwrite an existing note.
@@ -93,22 +99,21 @@ The reading log is `data/reading_log.csv`; update it through the `mark` command.
 Derive reading progress from these commands rather than copying counts into
 documentation; counts in prose become stale.
 
-## Optional local Zotero import
+## Local Zotero import
 
-Enable Zotero's local API in Settings → Advanced and keep Zotero running. Add
-the optional dependency, then enrich the canonical inventory in place:
+Enable Zotero's local API in Settings → Advanced and keep Zotero running, then
+enrich the canonical inventory in place:
 
 ```bash
-uv sync --extra zotero
 uv run python -m related_work.inventory --zotero-local
 ```
 
 This enriches the single `data/inventory.csv` in place, preserving all
 filesystem-discovered PDFs and relative paths while adding Zotero keys and
 abstracts for unambiguous matches. Unmatched and ambiguous rows keep
-filename-derived metadata. The importer reads Zotero only; it does not modify
-the Zotero library. A filesystem-only refresh retains Zotero metadata when a
-PDF's relative path is unchanged; renaming or moving the file drops that
+filename-derived metadata. The importer reads the local HTTP API; it does not
+modify the Zotero library. A filesystem-only refresh retains Zotero metadata
+when a PDF's relative path is unchanged; renaming or moving the file drops that
 association.
 
 `data/soa_citations.csv` may contain legacy `Literature/`-prefixed paths.

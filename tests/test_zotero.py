@@ -1,4 +1,5 @@
 import unittest
+import urllib.error
 from unittest.mock import patch
 
 from related_work.zotero import ZoteroClient
@@ -8,7 +9,57 @@ class TestZoteroClient(unittest.TestCase):
     def test_offline_graceful_handling(self):
         client = ZoteroClient(base_url="http://127.0.0.1:99999/api")
         self.assertFalse(client.is_available())
-        self.assertEqual(client.get_annotations_for_item("NOKEY"), [])
+        with patch.object(client, "get_all_library_items", return_value=[]):
+            self.assertEqual(client.get_annotations_for_item("NOKEY"), [])
+
+    def test_library_fetch_paginates_until_last_page(self):
+        client = ZoteroClient()
+        pages = [
+            [{"key": f"K{i}", "data": {}} for i in range(100)],
+            [{"key": f"K{i}", "data": {}} for i in range(100, 200)],
+            [{"key": "K200", "data": {}}],
+        ]
+        with patch.object(client, "_request", side_effect=pages) as request:
+            items = client.get_all_library_items()
+        self.assertEqual(len(items), 201)
+        self.assertEqual(
+            [call.args[0] for call in request.call_args_list],
+            ["items?start=0&limit=100", "items?start=100&limit=100", "items?start=200&limit=100"],
+        )
+
+    def test_page_failure_does_not_return_partial_library(self):
+        client = ZoteroClient()
+        with patch.object(
+            client,
+            "_request",
+            side_effect=[
+                [{"key": f"K{i}", "data": {}} for i in range(100)],
+                urllib.error.URLError("offline"),
+            ],
+        ):
+            with self.assertRaises(urllib.error.URLError):
+                client.get_all_library_items()
+
+    def test_invalid_page_shape_fails(self):
+        client = ZoteroClient()
+        with patch.object(client, "_request", return_value={"items": []}):
+            with self.assertRaisesRegex(SystemExit, "Invalid Zotero items response"):
+                client.get_all_library_items()
+
+    def test_malformed_availability_response_is_not_treated_as_offline(self):
+        client = ZoteroClient()
+        with patch.object(client, "_request", return_value={}):
+            with self.assertRaisesRegex(SystemExit, "Invalid response"):
+                client.is_available()
+
+    def test_ambiguous_attachment_match_fails(self):
+        client = ZoteroClient()
+        items = [
+            {"key": "A", "data": {"itemType": "attachment", "parentItem": "P1", "filename": "paper.pdf"}},
+            {"key": "B", "data": {"itemType": "attachment", "parentItem": "P2", "filename": "paper.pdf"}},
+        ]
+        with self.assertRaisesRegex(SystemExit, "Multiple Zotero items"):
+            client.resolve_item_key(path="paper.pdf", items=items)
 
     @patch.object(ZoteroClient, "get_all_library_items")
     def test_resolve_item_key_by_attachment_and_title(self, mock_items):
